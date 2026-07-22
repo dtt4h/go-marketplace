@@ -2,7 +2,38 @@
 
 ## Обзор
 
-PostgreSQL 16. Доступ через pgx. Миграции — golang-migrate (SQL-файлы в `migrations/`).
+PostgreSQL 16 (образ `postgres:16-alpine`). Доступ через pgx (пул соединений `pgxpool`). Миграции — golang-migrate (SQL-файлы в `migrations/`). SQL-запросы генерируются через sqlc (v2).
+
+## Стек
+
+| Компонент | Технология |
+|-----------|------------|
+| База данных | PostgreSQL 16 |
+| Драйвер | pgx/v5 (через pgxpool) |
+| Миграции | golang-migrate (file → postgres) |
+| Генерация запросов | sqlc v2 (sql_package: pgx/v5) |
+| Расширения | pg_trgm (нечёткий поиск по названию) |
+
+## Миграции
+
+Миграции — обычные SQL-файлы в `migrations/`. Выполняются при старте приложения (`main.go → runMigrations`).
+
+### Правила работы с миграциями
+
+- **Одна миграция = один файл `.up.sql` + `.down.sql`**
+- Именование: `{version}_{description}.{up|down}.sql` (например, `000001_init.up.sql`)
+- **Не редактировать** опубликованные миграции. Если нужно изменить схему — создавай новую миграцию.
+- Если проект на стадии разработки и БД чистая — можно откатить и пересоздать: `docker compose down -v && docker compose up -d --build`
+
+### Текущая миграция
+
+**000001_init.up.sql** — создаёт:
+- Расширение `pg_trgm`
+- Типы: `user_role`, `product_status`, `order_status`, `payment_status`
+- Функция `update_updated_at()` — триггер для автообновления `updated_at`
+- Таблицы: `users`, `stores`, `categories`, `products`, `product_images`, `orders`, `order_items`, `payments`, `refresh_tokens`
+- Индексы для всех внешних ключей и частых фильтров
+- GIN-индекс на `products.title` (триграммный поиск)
 
 ## ER-диаграмма
 
@@ -14,21 +45,21 @@ PostgreSQL 16. Доступ через pgx. Миграции — golang-migrate 
 │ email        │  1:1  │ user_id (FK) │
 │ password_hash│       │ name         │
 │ role         │       │ description  │
-│ first_name   │       │ logo_url     │
-│ last_name    │       │ created_at   │
-│ avatar_url   │       │ updated_at   │
-│ phone        │       └──────┬───────┘
-│ created_at   │              │
-│ updated_at   │              │ 1:N
+│ username     │       │ logo_url     │
+│ avatar_url   │       │ created_at   │
+│ phone        │       │ updated_at   │
+│ created_at   │       └──────┬───────┘
+│ updated_at   │              │
 └──────┬───────┘              │
-       │                      ▼
-       │ 1:N          ┌──────────────┐
+       │                      │ 1:N
+       │ 1:N                  ▼
+       │              ┌──────────────┐
        │              │   products   │
        │              ├──────────────┤
        │              │ id (PK)      │
        │              │ store_id (FK)│
-       │              │ category_id  │
-       │   ┌──────────│ title        │
+       │   ┌──────────│ category_id  │
+       │   │          │ title        │
        │   │          │ description  │
        │   │          │ price        │
        │   │          │ stock        │
@@ -73,6 +104,15 @@ PostgreSQL 16. Доступ через pgx. Миграции — golang-migrate 
 └──────────────┘                                  │ created_at       │
                                                   │ updated_at       │
                                                   └──────────────────┘
+┌──────────────────┐
+│  refresh_tokens  │
+├──────────────────┤
+│ id (PK)          │
+│ user_id (FK)     │──→ users(id)
+│ token (UNIQUE)   │
+│ expires_at       │
+│ created_at       │
+└──────────────────┘
 ```
 
 ## Таблицы
@@ -83,10 +123,9 @@ PostgreSQL 16. Доступ через pgx. Миграции — golang-migrate 
 |---------|-----|-------------|----------|
 | `id` | `BIGSERIAL` | PK | Идентификатор |
 | `email` | `VARCHAR(255)` | UNIQUE, NOT NULL | Email |
-| `password_hash` | `VARCHAR(255)` | NOT NULL | Хеш пароля (bcrypt) |
+| `password_hash` | `VARCHAR(255)` | NOT NULL | Хеш пароля (bcrypt, cost=12) |
 | `role` | `user_role` | NOT NULL, DEFAULT `'buyer'` | Роль: buyer/seller/admin |
-| `first_name` | `VARCHAR(100)` | | Имя |
-| `last_name` | `VARCHAR(100)` | | Фамилия |
+| `username` | `VARCHAR(100)` | UNIQUE, NOT NULL | Никнейм |
 | `avatar_url` | `TEXT` | | URL аватара |
 | `phone` | `VARCHAR(20)` | | Телефон |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | Дата создания |
@@ -100,8 +139,7 @@ CREATE TABLE users (
     email         VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role          user_role    NOT NULL DEFAULT 'buyer',
-    first_name    VARCHAR(100),
-    last_name     VARCHAR(100),
+    username      VARCHAR(100) NOT NULL UNIQUE,
     avatar_url    TEXT,
     phone         VARCHAR(20),
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -109,11 +147,34 @@ CREATE TABLE users (
 );
 ```
 
+### refresh_tokens
+
+| Колонка | Тип | Ограничения | Описание |
+|---------|-----|-------------|----------|
+| `id` | `BIGSERIAL` | PK | |
+| `user_id` | `BIGINT` | FK → users(id), NOT NULL | Пользователь |
+| `token` | `VARCHAR(512)` | UNIQUE, NOT NULL | Refresh token (JWT) |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL | Срок действия |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | |
+
+```sql
+CREATE TABLE refresh_tokens (
+    id         BIGSERIAL    PRIMARY KEY,
+    user_id    BIGINT       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token      VARCHAR(512) NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ  NOT NULL,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_token   ON refresh_tokens(token);
+```
+
 ### stores
 
 | Колонка | Тип | Ограничения | Описание |
 |---------|-----|-------------|----------|
-| `id` | `BIGSERIAL` | PK | Идентификатор |
+| `id` | `BIGSERIAL` | PK | |
 | `user_id` | `BIGINT` | FK → users(id), UNIQUE, NOT NULL | Владелец-продавец |
 | `name` | `VARCHAR(200)` | NOT NULL | Название магазина |
 | `description` | `TEXT` | | Описание |
@@ -187,10 +248,12 @@ CREATE TABLE products (
 CREATE INDEX idx_products_store_id    ON products(store_id);
 CREATE INDEX idx_products_category_id ON products(category_id);
 CREATE INDEX idx_products_status      ON products(status);
+CREATE INDEX idx_products_price       ON products(price);
+CREATE INDEX idx_products_created_at  ON products(created_at);
 CREATE INDEX idx_products_title_trgm  ON products USING gin (title gin_trgm_ops);
 ```
 
-> `gin_trgm_ops` требует расширения `pg_trgm` для полнотекстового поиска.
+> `gin_trgm_ops` требует расширения `pg_trgm` для полнотекстового поиска (нечёткий поиск по части названия).
 
 ### product_images
 
@@ -237,8 +300,9 @@ CREATE TABLE orders (
     updated_at TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_orders_user_id ON orders(user_id);
-CREATE INDEX idx_orders_status  ON orders(status);
+CREATE INDEX idx_orders_user_id    ON orders(user_id);
+CREATE INDEX idx_orders_status     ON orders(status);
+CREATE INDEX idx_orders_created_at ON orders(created_at);
 ```
 
 ### order_items
@@ -296,38 +360,26 @@ CREATE TABLE payments (
 CREATE INDEX idx_payments_status ON payments(status);
 ```
 
-### refresh_tokens
-
-| Колонка | Тип | Ограничения | Описание |
-|---------|-----|-------------|----------|
-| `id` | `BIGSERIAL` | PK | |
-| `user_id` | `BIGINT` | FK → users(id), NOT NULL | Пользователь |
-| `token` | `VARCHAR(512)` | UNIQUE, NOT NULL | Хеш refresh token |
-| `expires_at` | `TIMESTAMPTZ` | NOT NULL | Срок действия |
-| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `now()` | |
-
-```sql
-CREATE TABLE refresh_tokens (
-    id         BIGSERIAL    PRIMARY KEY,
-    user_id    BIGINT       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token      VARCHAR(512) NOT NULL UNIQUE,
-    expires_at TIMESTAMPTZ  NOT NULL,
-    created_at TIMESTAMPTZ  NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_token   ON refresh_tokens(token);
-```
-
 ## Индексы
 
-Помимо указанных выше, рекомендуется:
-
-| Индекс | Таблица | Назначение |
-|--------|---------|------------|
-| `idx_products_price` | products | Фильтрация по цене |
-| `idx_products_created_at` | products | Сортировка по новизне |
-| `idx_orders_created_at` | orders | Сортировка по дате |
+| Индекс | Таблица | Колонка | Назначение |
+|--------|---------|---------|------------|
+| `idx_categories_parent_id` | categories | parent_id | Поиск подкатегорий |
+| `idx_products_store_id` | products | store_id | Товары магазина |
+| `idx_products_category_id` | products | category_id | Фильтр по категории |
+| `idx_products_status` | products | status | Модерация |
+| `idx_products_price` | products | price | Сортировка/фильтр по цене |
+| `idx_products_created_at` | products | created_at | Сортировка по новизне |
+| `idx_products_title_trgm` | products | title (GIN) | Нечёткий поиск по названию |
+| `idx_product_images_product_id` | product_images | product_id | Поиск изображений товара |
+| `idx_orders_user_id` | orders | user_id | Заказы пользователя |
+| `idx_orders_status` | orders | status | Фильтр по статусу |
+| `idx_orders_created_at` | orders | created_at | Сортировка по дате |
+| `idx_order_items_order_id` | order_items | order_id | Позиции заказа |
+| `idx_order_items_product_id` | order_items | product_id | Поиск по товару |
+| `idx_payments_status` | payments | status | Фильтр по статусу |
+| `idx_refresh_tokens_user_id` | refresh_tokens | user_id | Поиск токенов пользователя |
+| `idx_refresh_tokens_token` | refresh_tokens | token | Поиск по токену |
 
 ## Расширения
 
@@ -337,7 +389,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- Нечёткий поиск по н�
 
 ## Триггеры
 
-Триггер на автоматическое обновление `updated_at`:
+Автоматическое обновление `updated_at` при UPDATE:
 
 ```sql
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -348,10 +400,40 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Применить ко всем таблицам с updated_at:
-CREATE TRIGGER trg_users_updated_at    BEFORE UPDATE ON users    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_stores_updated_at   BEFORE UPDATE ON stores   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_orders_updated_at   BEFORE UPDATE ON orders   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_payments_updated_at BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+-- Применяется к таблицам: users, stores, products, orders, payments
+```
+
+## sqlc
+
+SQL-запросы пишутся в `sql/queries/`. Для генерации используется `sqlc.yaml`:
+
+```yaml
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "sql/schemas"
+    queries: "sql/queries"
+    gen:
+      go:
+        package: "database"
+        out: "internal/database/sqlc"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        json_tags_case_style: "camel"
+```
+
+**Важно:** `sql/schemas/` — копия схемы, синхронизировать с `migrations/` вручную.
+
+### Типы nullable в sqlc
+
+sqlc v2 с `sql_package: "pgx/v5"` генерирует для nullable полей тип `pgtype.Text` (не `*string`, не `NullText`).
+
+**Конвертация:**
+```go
+// *string → pgtype.Text
+pgtype.Text{String: *s, Valid: true}
+
+// pgtype.Text → *string
+if t.Valid { return &t.String }
+return nil
 ```

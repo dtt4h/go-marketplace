@@ -42,17 +42,6 @@ func (s *Server) setupMiddleware() {
 	s.router.Use(mw.CORS)
 }
 
-func (s *Server) setupRoutes() {
-	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	})
-
-	s.router.Route("/api/v1", func(r chi.Router) {
-	})
-}
-
 func (s *Server) Start() error {
 	s.http = &http.Server{
 		Addr:         ":" + strconv.Itoa(s.cfg.Server.Port),

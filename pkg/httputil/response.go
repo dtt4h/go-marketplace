@@ -69,3 +69,7 @@ func Conflict(w http.ResponseWriter, message string) {
 func InternalError(w http.ResponseWriter, _ string) {
 	Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
 }
+
+func DecodeJSON(r *http.Request, v any) error {
+	return json.NewDecoder(r.Body).Decode(v)
+}
