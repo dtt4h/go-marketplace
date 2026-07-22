@@ -8,8 +8,7 @@ export type User = {
   id: number
   email: string
   role: 'buyer' | 'seller' | 'admin'
-  first_name: string
-  last_name: string
+  username: string
 }
 
 export type AuthResponse = {
