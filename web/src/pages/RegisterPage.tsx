@@ -8,8 +8,7 @@ import { register as registerUser} from '../api/auth'
 import type { APIErrorResponse } from '../types/auth'
 
 const registerSchema = z.object({
-  first_name: z.string().trim().min(1, 'Введите имя'),
-  last_name: z.string().trim().min(1, 'Введите фамилию'),
+  username: z.string().trim().min(1, 'Введите имя пользователя'),
   email: z.string().trim().email('Введите корректный email'),
   password: z.string().min(8, 'Пароль должен содержать минимум 8 символов'),
 })
@@ -78,23 +77,13 @@ export function RegisterPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div>
-          <label htmlFor="firstName">Имя</label>
+          <label htmlFor="username">Имя пользователя</label>
           <input 
-            id="firstName" 
+            id="username" 
             type="text"
-            {...register('first_name')}
+            {...register('username')}
           />
-          {errors.first_name && <p>{errors.first_name.message}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="lastName">Фамилия</label>
-          <input 
-            id="lastName" 
-            type="text"
-            {...register('last_name')}
-          />
-          {errors.last_name && <p>{errors.last_name.message}</p>}
+          {errors.username && <p>{errors.username.message}</p>}
         </div>
 
         <div>
