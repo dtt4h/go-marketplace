@@ -15,7 +15,8 @@ const registerSchema = z.object({
 
 type RegisterFormData = z.infer<typeof registerSchema>
 
-export function RegisterPage() {
+
+export function RegisterForm() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -72,9 +73,6 @@ export function RegisterPage() {
   }
 
   return (
-    <main>
-      <h1>Регистрация</h1>
-
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div>
           <label htmlFor="username">Имя пользователя</label>
@@ -112,6 +110,5 @@ export function RegisterPage() {
           {isSubmitting ? 'Регистрация...' : 'Зарегистрироваться'}
         </button>
       </form>
-    </main>
   )
 }
