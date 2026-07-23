@@ -37,7 +37,7 @@ export function RegisterForm() {
       const response = await registerUser(data)
 
       setSuccessMessage(
-        `Аккаунт ${response.user.email} успешно создан`,
+        `Аккаунт ${response.user.username} успешно создан`,
       )
       //save tokens here
     } catch (error) {
