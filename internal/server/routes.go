@@ -7,6 +7,7 @@ import (
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/modules/auth"
+	"github.com/dtt4h/go-marketplace/internal/modules/users"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
 )
 
@@ -19,6 +20,7 @@ func (s *Server) setupRoutes() {
 
 	s.router.Route("/api/v1", func(r chi.Router) {
 		s.registerAuthRoutes(r)
+		s.registerUserRoutes(r)
 	})
 }
 
@@ -33,4 +35,16 @@ func (s *Server) registerAuthRoutes(r chi.Router) {
 	r.Post("/auth/login", authHandler.Login)
 	r.Post("/auth/refresh", authHandler.Refresh)
 	r.With(mw.JWTAuth(s.cfg)).Post("/auth/logout", authHandler.Logout)
+}
+
+func (s *Server) registerUserRoutes(r chi.Router) {
+	queries := db.New(s.db)
+
+	userRepo := users.NewUserRepository(queries)
+	userSvc := users.NewUserService(userRepo)
+	userHandler := users.NewUserHandler(userSvc)
+
+	r.With(mw.JWTAuth(s.cfg)).Get("/users/me", userHandler.GetProfile)
+	r.With(mw.JWTAuth(s.cfg)).Patch("/users/me", userHandler.UpdateProfile)
+	r.With(mw.JWTAuth(s.cfg)).Post("/users/me/store", userHandler.CreateStore)
 }
