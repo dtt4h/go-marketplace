@@ -1,8 +1,8 @@
-import { RegisterPage } from './pages/RegisterPage'
+import { AuthPage } from './pages/AuthPage'
 
 function App() {
   return (
-    <RegisterPage />
+    <AuthPage />
   )
 }
 

@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { register as registerUser} from '../api/auth'
 import type { APIErrorResponse } from '../types/auth'
+import { useAuthStore } from '../store/authStore'
 
 const registerSchema = z.object({
   username: z.string().trim().min(1, 'Введите имя пользователя'),
@@ -15,9 +16,12 @@ const registerSchema = z.object({
 
 type RegisterFormData = z.infer<typeof registerSchema>
 
-export function RegisterPage() {
+
+export function RegisterForm() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const setSession = useAuthStore((state) => state.setSession)
 
   const {
     register,
@@ -35,8 +39,13 @@ export function RegisterPage() {
     try {
       const response = await registerUser(data)
 
+      setSession(
+        response.user,
+        response.access_token,
+      )
+
       setSuccessMessage(
-        `Аккаунт ${response.user.email} успешно создан`,
+        `Аккаунт ${response.user.username} успешно создан`,
       )
       //save tokens here
     } catch (error) {
@@ -72,9 +81,6 @@ export function RegisterPage() {
   }
 
   return (
-    <main>
-      <h1>Регистрация</h1>
-
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div>
           <label htmlFor="username">Имя пользователя</label>
@@ -112,6 +118,5 @@ export function RegisterPage() {
           {isSubmitting ? 'Регистрация...' : 'Зарегистрироваться'}
         </button>
       </form>
-    </main>
   )
 }

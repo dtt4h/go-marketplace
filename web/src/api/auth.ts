@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { AuthResponse, RegisterRequest } from '../types/auth'
+import type { AuthResponse, LoginRequest ,RegisterRequest } from '../types/auth'
 
 export async function register(
   data: RegisterRequest,): Promise<AuthResponse> {
@@ -8,4 +8,17 @@ export async function register(
       data,
     )
   return response.data
+}
+
+export async function login(
+  data: LoginRequest,): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>(
+      '/auth/login',
+      data,
+    )
+  return response.data
+}
+
+export async function logout(): Promise<void> {
+  await apiClient.post(`/auth/logout`)
 }
