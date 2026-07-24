@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { login as loginUser } from '../api/auth'
 import type { APIErrorResponse } from '../types/auth'
+import { useAuthStore } from '../store/authStore'
 
 const loginSchema = z.object({
   email: z
@@ -24,6 +25,8 @@ export function LoginForm() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
+  const setSession = useAuthStore((state) => state.setSession)
+
   const {
     register,
     handleSubmit,
@@ -38,6 +41,11 @@ export function LoginForm() {
 
     try {
       const response = await loginUser(data)
+
+      setSession(
+        response.user,
+        response.access_token,
+      )
 
       setSuccessMessage(
         `Вы вошли как ${response.user.username}`,

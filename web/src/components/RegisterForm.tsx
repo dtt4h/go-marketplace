@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { register as registerUser} from '../api/auth'
 import type { APIErrorResponse } from '../types/auth'
+import { useAuthStore } from '../store/authStore'
 
 const registerSchema = z.object({
   username: z.string().trim().min(1, 'Введите имя пользователя'),
@@ -19,6 +20,8 @@ type RegisterFormData = z.infer<typeof registerSchema>
 export function RegisterForm() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const setSession = useAuthStore((state) => state.setSession)
 
   const {
     register,
@@ -35,6 +38,11 @@ export function RegisterForm() {
 
     try {
       const response = await registerUser(data)
+
+      setSession(
+        response.user,
+        response.access_token,
+      )
 
       setSuccessMessage(
         `Аккаунт ${response.user.username} успешно создан`,
