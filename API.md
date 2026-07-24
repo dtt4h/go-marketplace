@@ -12,6 +12,20 @@ JWT Bearer token в заголовке:
 Authorization: Bearer <access_token>
 ```
 
+**Payload access token:**
+```json
+{
+  "user_id": 1,
+  "role": "buyer",
+  "exp": 1784720989,
+  "iat": 1784720089
+}
+```
+
+- **Access token** — срок жизни 15 минут (настраивается через `JWT_ACCESS_TTL`)
+- **Refresh token** — срок жизни 7 дней (настраивается через `JWT_REFRESH_TTL`)
+- Рефреш-токен хранится в БД (таблица `refresh_tokens`), при refresh — ротация (старый удаляется, создаётся новый)
+
 Эндпоинты, требующие авторизации, помечены 🔒. Эндпоинты, требующие определённую роль, помечены 🔒 `[role]`.
 
 ## Формат ошибок
@@ -26,22 +40,35 @@ Authorization: Bearer <access_token>
 }
 ```
 
+| Код | HTTP | Описание |
+|-----|------|----------|
+| `VALIDATION_ERROR` | 400 | Некорректные входные данные |
+| `UNAUTHORIZED` | 401 | Не авторизован / неверный токен / неверный пароль |
+| `FORBIDDEN` | 403 | Недостаточно прав |
+| `NOT_FOUND` | 404 | Ресурс не найден |
+| `CONFLICT` | 409 | Конфликт (email занят, username занят) |
+| `INTERNAL_ERROR` | 500 | Внутренняя ошибка сервера |
+
 ---
 
 ## Auth
 
 ### POST `/auth/register`
-Регистрация нового пользователя.
+Регистрация нового пользователя. Создаётся пользователь с ролью `buyer`.
 
 **Request:**
 ```json
 {
   "email": "user@example.com",
   "password": "secret123",
-  "first_name": "Иван",
-  "last_name": "Иванов"
+  "username": "ivan"
 }
 ```
+
+**Правила валидации:**
+- `email` — обязательное, уникальное
+- `password` — минимум 8 символов
+- `username` — обязательное, уникальное, до 100 символов
 
 **Response 201:**
 ```json
@@ -50,16 +77,19 @@ Authorization: Bearer <access_token>
     "id": 1,
     "email": "user@example.com",
     "role": "buyer",
-    "first_name": "Иван",
-    "last_name": "Иванов"
+    "username": "ivan"
   },
   "access_token": "eyJhbGci...",
   "refresh_token": "eyJhbGci..."
 }
 ```
 
+**Ошибки:**
+- `VALIDATION_ERROR` (400) — слабый пароль, невалидный email
+- `CONFLICT` (409) — email уже занят
+
 ### POST `/auth/login`
-Вход.
+Вход. При успехе — новая пара токенов.
 
 **Request:**
 ```json
@@ -76,16 +106,18 @@ Authorization: Bearer <access_token>
     "id": 1,
     "email": "user@example.com",
     "role": "buyer",
-    "first_name": "Иван",
-    "last_name": "Иванов"
+    "username": "ivan"
   },
   "access_token": "eyJhbGci...",
   "refresh_token": "eyJhbGci..."
 }
 ```
 
+**Ошибки:**
+- `UNAUTHORIZED` (401) — неверный email или пароль
+
 ### POST `/auth/refresh`
-Обновление токенов.
+Обновление токенов. Старый refresh-токен удаляется, создаётся новая пара (ротация).
 
 **Request:**
 ```json
@@ -102,35 +134,21 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**Ошибки:**
+- `UNAUTHORIZED` (401) — невалидный или истёкший refresh-токен
+
 ### POST `/auth/logout` 🔒
-Выход. Отзыв refresh token.
+Выход. Удаляет **все** refresh-токены текущего пользователя (завершает все сессии).
+
+**Ошибки:**
+- `UNAUTHORIZED` (401) — отсутствует или невалидный access-токен
 
 **Response 204:** No Content
 
-### POST `/auth/password-reset`
-Запрос на сброс пароля. Отправляет email со ссылкой.
+### ~~POST `/auth/password-reset`~~ <!-- TODO -->
+### ~~POST `/auth/password-reset/confirm`~~ <!-- TODO -->
 
-**Request:**
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-**Response 204:** No Content
-
-### POST `/auth/password-reset/confirm`
-Подтверждение сброса пароля.
-
-**Request:**
-```json
-{
-  "token": "reset-token-from-email",
-  "password": "newsecret123"
-}
-```
-
-**Response 204:** No Content
+> Сброс пароля запланирован на следующий релиз.
 
 ---
 
@@ -145,22 +163,23 @@ Authorization: Bearer <access_token>
   "id": 1,
   "email": "user@example.com",
   "role": "buyer",
-  "first_name": "Иван",
-  "last_name": "Иванов",
+  "username": "ivan",
   "avatar_url": "https://...",
   "phone": "+79991234567",
   "created_at": "2026-07-19T10:00:00Z"
 }
 ```
 
+**Ошибки:**
+- `NOT_FOUND` (404) — пользователь не найден
+
 ### PATCH `/users/me` 🔒
-Обновление профиля.
+Обновление профиля. Только переданные поля обновляются.
 
 **Request:**
 ```json
 {
-  "first_name": "Пётр",
-  "last_name": "Петров",
+  "username": "ivan_updated",
   "phone": "+79997654321",
   "avatar_url": "https://..."
 }
@@ -172,16 +191,19 @@ Authorization: Bearer <access_token>
   "id": 1,
   "email": "user@example.com",
   "role": "buyer",
-  "first_name": "Пётр",
-  "last_name": "Петров",
+  "username": "ivan_updated",
   "avatar_url": "https://...",
   "phone": "+79997654321",
   "created_at": "2026-07-19T10:00:00Z"
 }
 ```
 
+**Ошибки:**
+- `CONFLICT` (409) — username уже занят
+- `NOT_FOUND` (404) — пользователь не найден
+
 ### POST `/users/me/store` 🔒
-Регистрация в качестве продавца (создание магазина).
+Регистрация в качестве продавца (создание магазина). Автоматически меняет роль пользователя на `seller`.
 
 **Request:**
 ```json
@@ -203,6 +225,9 @@ Authorization: Bearer <access_token>
   "created_at": "2026-07-19T10:00:00Z"
 }
 ```
+
+**Ошибки:**
+- `CONFLICT` (409) — магазин уже существует
 
 ### GET `/users/me/orders` 🔒
 История заказов покупателя.
@@ -232,6 +257,8 @@ Authorization: Bearer <access_token>
 
 ## Products
 
+> Модуль в разработке. Спецификация ниже — целевая.
+
 ### GET `/products`
 Список товаров с фильтрацией и пагинацией.
 
@@ -245,7 +272,7 @@ Authorization: Bearer <access_token>
 | `store_id` | int | Фильтр по магазину |
 | `min_price` | float | Минимальная цена |
 | `max_price` | float | Максимальная цена |
-| `search` | string | Поиск по названию |
+| `search` | string | Поиск по названию (триграммный поиск через pg_trgm) |
 | `sort` | string | Сортировка: `price_asc`, `price_desc`, `created_desc` (default) |
 
 **Response 200:**
@@ -398,6 +425,8 @@ Authorization: Bearer <access_token>
 
 ## Orders
 
+> Модуль в разработке. Спецификация ниже — целевая.
+
 ### POST `/orders` 🔒
 Создание заказа из корзины.
 
@@ -472,8 +501,7 @@ Authorization: Bearer <access_token>
       "total": "105000.00",
       "buyer": {
         "id": 10,
-        "first_name": "Иван",
-        "last_name": "Иванов"
+        "username": "ivan"
       },
       "items": [
         {
@@ -507,6 +535,8 @@ Authorization: Bearer <access_token>
 ---
 
 ## Payments
+
+> Модуль в разработке. Спецификация ниже — целевая.
 
 ### POST `/payments` 🔒
 Инициализация платежа по заказу.

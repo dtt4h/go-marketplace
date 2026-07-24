@@ -1,0 +1,18 @@
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS product_images;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS stores;
+DROP TABLE IF EXISTS users;
+
+DROP FUNCTION IF EXISTS update_updated_at();
+
+DROP TYPE IF EXISTS payment_status;
+DROP TYPE IF EXISTS order_status;
+DROP TYPE IF EXISTS product_status;
+DROP TYPE IF EXISTS user_role;
+
+DROP EXTENSION IF EXISTS pg_trgm;
