@@ -29,3 +29,13 @@ export type APIErrorResponse = {
     details?: Record<string, unknown>
   }
 }
+
+export type RefreshResponse = {
+  access_token: string
+}
+
+export type UserProfile = User & {
+  avatar_url: string | null
+  phone: string | null
+  created_at: string
+}
