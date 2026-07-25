@@ -2,9 +2,11 @@ package users
 
 import (
 	"context"
+	"fmt"
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/dtt4h/go-marketplace/pkg/pgutil"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserRepository interface {
@@ -12,15 +14,16 @@ type UserRepository interface {
 	UpdateUser(ctx context.Context, id int64, username, avatarURL, phone *string) (db.User, error)
 	UpdateUserRole(ctx context.Context, id int64, role db.UserRole) (db.User, error)
 	GetStoreByUserID(ctx context.Context, userID int64) (db.Store, error)
-	CreateStore(ctx context.Context, userID int64, name string, description, logoURL *string) (db.Store, error)
+	CreateStoreWithRole(ctx context.Context, userID int64, name string, description, logoURL *string) (db.Store, error)
 }
 
 type userRepository struct {
 	queries *db.Queries
+	pool    *pgxpool.Pool
 }
 
-func NewUserRepository(queries *db.Queries) UserRepository {
-	return &userRepository{queries: queries}
+func NewUserRepository(queries *db.Queries, pool *pgxpool.Pool) UserRepository {
+	return &userRepository{queries: queries, pool: pool}
 }
 
 func (r *userRepository) GetUserByID(ctx context.Context, id int64) (db.User, error) {
@@ -30,9 +33,9 @@ func (r *userRepository) GetUserByID(ctx context.Context, id int64) (db.User, er
 func (r *userRepository) UpdateUser(ctx context.Context, id int64, username, avatarURL, phone *string) (db.User, error) {
 	return r.queries.UpdateUser(ctx, db.UpdateUserParams{
 		ID:        id,
-		Username:  nullText(username),
-		AvatarUrl: nullText(avatarURL),
-		Phone:     nullText(phone),
+		Username:  pgutil.NullText(username),
+		AvatarUrl: pgutil.NullText(avatarURL),
+		Phone:     pgutil.NullText(phone),
 	})
 }
 
@@ -47,18 +50,35 @@ func (r *userRepository) GetStoreByUserID(ctx context.Context, userID int64) (db
 	return r.queries.GetStoreByUserID(ctx, userID)
 }
 
-func (r *userRepository) CreateStore(ctx context.Context, userID int64, name string, description, logoURL *string) (db.Store, error) {
-	return r.queries.CreateStore(ctx, db.CreateStoreParams{
+func (r *userRepository) CreateStoreWithRole(ctx context.Context, userID int64, name string, description, logoURL *string) (db.Store, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return db.Store{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	q := r.queries.WithTx(tx)
+
+	store, err := q.CreateStore(ctx, db.CreateStoreParams{
 		UserID:      userID,
 		Name:        name,
-		Description: nullText(description),
-		LogoUrl:     nullText(logoURL),
+		Description: pgutil.NullText(description),
+		LogoUrl:     pgutil.NullText(logoURL),
 	})
-}
-
-func nullText(s *string) pgtype.Text {
-	if s == nil {
-		return pgtype.Text{Valid: false}
+	if err != nil {
+		return db.Store{}, fmt.Errorf("create store: %w", err)
 	}
-	return pgtype.Text{String: *s, Valid: true}
+
+	if _, err := q.UpdateUserRole(ctx, db.UpdateUserRoleParams{
+		ID:   userID,
+		Role: db.UserRoleSeller,
+	}); err != nil {
+		return db.Store{}, fmt.Errorf("update user role: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return db.Store{}, fmt.Errorf("commit tx: %w", err)
+	}
+
+	return store, nil
 }
