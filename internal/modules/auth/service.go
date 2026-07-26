@@ -44,12 +44,20 @@ func (s *authService) Register(ctx context.Context, req dtos.RegisterRequest) (d
 		return dtos.AuthResponse{}, ErrWeakPassword
 	}
 
+	var role db.UserRole
+	switch req.Role {
+	case "seller":
+		role = db.UserRoleSeller
+	default:
+		role = db.UserRoleBuyer
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
 	if err != nil {
 		return dtos.AuthResponse{}, fmt.Errorf("hash password: %w", err)
 	}
 
-	user, err := s.repo.CreateUser(ctx, req.Email, string(hashedPassword), db.UserRoleBuyer, req.Username)
+	user, err := s.repo.CreateUser(ctx, req.Email, string(hashedPassword), role, req.Username)
 	if err != nil {
 		if pgutil.IsUniqueViolation(err) {
 			return dtos.AuthResponse{}, ErrEmailTaken
