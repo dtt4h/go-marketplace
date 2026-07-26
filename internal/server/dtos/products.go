@@ -75,7 +75,7 @@ type ProductListItem struct {
 	CreatedAt time.Time              `json:"created_at"`
 }
 
-func numericToStr(n pgtype.Numeric) string {
+func NumericToStr(n pgtype.Numeric) string {
 	if !n.Valid {
 		return ""
 	}
@@ -169,7 +169,7 @@ func ToProductResponse(row db.GetProductRow, images []db.ProductImage) ProductRe
 	resp := ProductResponse{
 		ID:        row.ID,
 		Title:     row.Title,
-		Price:     numericToStr(row.Price),
+		Price:     NumericToStr(row.Price),
 		Stock:     int(row.Stock),
 		Status:    string(row.Status),
 		Images:    toProductImages(images),
@@ -210,7 +210,7 @@ func ToProductListItem(row db.ListProductsRow, images []db.ProductImage) Product
 	item := ProductListItem{
 		ID:        row.ID,
 		Title:     row.Title,
-		Price:     numericToStr(row.Price),
+		Price:     NumericToStr(row.Price),
 		Stock:     int(row.Stock),
 		Images:    toProductImages(images),
 		CreatedAt: row.CreatedAt.Time,

@@ -65,6 +65,19 @@ func (q *Queries) GetStoreByUserID(ctx context.Context, userID int64) (Store, er
 	return i, err
 }
 
+const getStoreOwnerByStoreID = `-- name: GetStoreOwnerByStoreID :one
+SELECT s.user_id
+FROM stores s
+WHERE s.id = $1
+`
+
+func (q *Queries) GetStoreOwnerByStoreID(ctx context.Context, id int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getStoreOwnerByStoreID, id)
+	var user_id int64
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const updateUserRole = `-- name: UpdateUserRole :one
 UPDATE users
 SET role = $2

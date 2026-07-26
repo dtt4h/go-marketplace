@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
@@ -37,6 +38,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setRefreshCookie(w, resp.RefreshToken)
 	httputil.JSON(w, http.StatusCreated, resp)
 }
 
@@ -58,20 +60,22 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setRefreshCookie(w, resp.RefreshToken)
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	var req dtos.RefreshRequest
-	if err := httputil.DecodeJSON(r, &req); err != nil {
-		httputil.ValidationError(w, "invalid request body", nil)
+	refreshToken, err := r.Cookie("refresh_token")
+	if err != nil {
+		httputil.Unauthorized(w, "missing refresh token")
 		return
 	}
 
-	resp, err := h.service.Refresh(r.Context(), req)
+	resp, err := h.service.Refresh(r.Context(), refreshToken.Value)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalidRefreshToken), errors.Is(err, ErrRefreshTokenExpired):
+			h.clearRefreshCookie(w)
 			httputil.Unauthorized(w, err.Error())
 		default:
 			httputil.InternalError(w, err.Error())
@@ -79,6 +83,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setRefreshCookie(w, resp.RefreshToken)
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
@@ -94,5 +99,28 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.clearRefreshCookie(w)
 	httputil.NoContent(w)
+}
+
+func (h *AuthHandler) setRefreshCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(168 * time.Hour.Seconds()),
+	})
+}
+
+func (h *AuthHandler) clearRefreshCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
 }

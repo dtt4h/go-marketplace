@@ -15,6 +15,7 @@ type UserRepository interface {
 	UpdateUserRole(ctx context.Context, id int64, role db.UserRole) (db.User, error)
 	GetStoreByUserID(ctx context.Context, userID int64) (db.Store, error)
 	CreateStoreWithRole(ctx context.Context, userID int64, name string, description, logoURL *string) (db.Store, error)
+	GetStoreOwnerByStoreID(ctx context.Context, storeID int64) (int64, error)
 }
 
 type userRepository struct {
@@ -81,4 +82,8 @@ func (r *userRepository) CreateStoreWithRole(ctx context.Context, userID int64, 
 	}
 
 	return store, nil
+}
+
+func (r *userRepository) GetStoreOwnerByStoreID(ctx context.Context, storeID int64) (int64, error) {
+	return r.queries.GetStoreOwnerByStoreID(ctx, storeID)
 }

@@ -1,0 +1,319 @@
+package orders
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math/big"
+
+	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
+	"github.com/dtt4h/go-marketplace/internal/server/dtos"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	ErrOrderNotFound      = errors.New("order not found")
+	ErrForbidden          = errors.New("access denied")
+	ErrInsufficientStock  = errors.New("insufficient stock")
+	ErrOrderEmpty         = errors.New("order must have at least one item")
+	ErrInvalidStatus      = errors.New("invalid order status")
+	ErrInvalidStatusTrans = errors.New("invalid status transition")
+)
+
+type storeResolver interface {
+	GetStoreOwnerByStoreID(ctx context.Context, storeID int64) (int64, error)
+	GetUserByID(ctx context.Context, id int64) (db.User, error)
+}
+
+type OrderService interface {
+	CreateOrder(ctx context.Context, userID int64, req dtos.CreateOrderRequest) (dtos.OrderResponse, error)
+	GetOrder(ctx context.Context, userID int64, orderID int64) (dtos.OrderResponse, error)
+	ListOrdersByUser(ctx context.Context, userID int64, page, limit int) ([]dtos.OrderListItem, int64, error)
+	ListOrdersBySeller(ctx context.Context, userID int64, page, limit int) ([]dtos.OrderSellerListItem, int64, error)
+	UpdateOrderStatus(ctx context.Context, userID int64, orderID int64, req dtos.UpdateOrderStatusRequest) (dtos.OrderResponse, error)
+}
+
+type orderService struct {
+	repo   OrderRepository
+	solver storeResolver
+	pool   *pgxpool.Pool
+}
+
+func NewOrderService(repo OrderRepository, solver storeResolver, pool *pgxpool.Pool) OrderService {
+	return &orderService{repo: repo, solver: solver, pool: pool}
+}
+
+type orderItem struct {
+	productID int64
+	quantity  int32
+	price     pgtype.Numeric
+}
+
+func (s *orderService) CreateOrder(ctx context.Context, userID int64, req dtos.CreateOrderRequest) (dtos.OrderResponse, error) {
+	if len(req.Items) == 0 {
+		return dtos.OrderResponse{}, ErrOrderEmpty
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return dtos.OrderResponse{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	q := db.New(tx)
+
+	var total pgtype.Numeric
+	var items []orderItem
+
+	for _, item := range req.Items {
+		if item.Quantity <= 0 {
+			return dtos.OrderResponse{}, fmt.Errorf("invalid quantity for product %d", item.ProductID)
+		}
+
+		stockRow, err := q.DecrementProductStock(ctx, db.DecrementProductStockParams{
+			ID:    item.ProductID,
+			Stock: item.Quantity,
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return dtos.OrderResponse{}, ErrInsufficientStock
+			}
+			return dtos.OrderResponse{}, fmt.Errorf("decrement stock for product %d: %w", item.ProductID, err)
+		}
+
+		itemTotal, err := s.mulNumeric(stockRow.Price, float64(item.Quantity))
+		if err != nil {
+			return dtos.OrderResponse{}, fmt.Errorf("calc item total: %w", err)
+		}
+
+		total, err = s.addNumeric(total, itemTotal)
+		if err != nil {
+			return dtos.OrderResponse{}, fmt.Errorf("acc total: %w", err)
+		}
+
+		items = append(items, orderItem{
+			productID: item.ProductID,
+			quantity:  item.Quantity,
+			price:     stockRow.Price,
+		})
+	}
+
+	order, err := q.CreateOrder(ctx, db.CreateOrderParams{
+		UserID:  userID,
+		Total:   total,
+		Address: req.Address,
+	})
+	if err != nil {
+		return dtos.OrderResponse{}, fmt.Errorf("create order: %w", err)
+	}
+
+	for _, item := range items {
+		_, err := q.CreateOrderItem(ctx, db.CreateOrderItemParams{
+			OrderID:   order.ID,
+			ProductID: item.productID,
+			Quantity:  item.quantity,
+			Price:     item.price,
+		})
+		if err != nil {
+			return dtos.OrderResponse{}, fmt.Errorf("create order item: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return dtos.OrderResponse{}, fmt.Errorf("commit tx: %w", err)
+	}
+
+	return s.GetOrder(ctx, userID, order.ID)
+}
+
+func (s *orderService) GetOrder(ctx context.Context, userID, orderID int64) (dtos.OrderResponse, error) {
+	order, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dtos.OrderResponse{}, ErrOrderNotFound
+		}
+		return dtos.OrderResponse{}, fmt.Errorf("get order: %w", err)
+	}
+
+	if order.UserID != userID {
+		return dtos.OrderResponse{}, ErrForbidden
+	}
+
+	items, err := s.repo.GetOrderItems(ctx, orderID)
+	if err != nil {
+		return dtos.OrderResponse{}, fmt.Errorf("get order items: %w", err)
+	}
+
+	return dtos.ToOrderResponse(order, items), nil
+}
+
+func (s *orderService) ListOrdersByUser(ctx context.Context, userID int64, page, limit int) ([]dtos.OrderListItem, int64, error) {
+	orders, total, err := s.repo.ListOrderByUser(ctx, userID, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list orders by user: %w", err)
+	}
+
+	if len(orders) == 0 {
+		return []dtos.OrderListItem{}, 0, nil
+	}
+
+	result := make([]dtos.OrderListItem, 0, len(orders))
+	for _, order := range orders {
+		result = append(result, dtos.ToOrderListItem(order, 0))
+	}
+
+	return result, total, nil
+}
+
+func (s *orderService) ListOrdersBySeller(ctx context.Context, userID int64, page, limit int) ([]dtos.OrderSellerListItem, int64, error) {
+	orders, total, err := s.repo.ListOrdersBySeller(ctx, userID, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list orders by seller: %w", err)
+	}
+
+	if len(orders) == 0 {
+		return []dtos.OrderSellerListItem{}, 0, nil
+	}
+
+	result := make([]dtos.OrderSellerListItem, 0, len(orders))
+	for _, order := range orders {
+		orderItems, err := s.repo.GetOrderItems(ctx, order.ID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("get order items for %d: %w", order.ID, err)
+		}
+
+		user, err := s.solver.GetUserByID(ctx, order.UserID)
+		buyerUsername := ""
+		if err == nil {
+			buyerUsername = user.Username
+		}
+
+		result = append(result, dtos.ToOrderSellerListItem(order, buyerUsername, orderItems))
+	}
+
+	return result, total, nil
+}
+
+func (s *orderService) UpdateOrderStatus(ctx context.Context, userID int64, orderID int64, req dtos.UpdateOrderStatusRequest) (dtos.OrderResponse, error) {
+	switch req.Status {
+	case db.OrderStatusPaid, db.OrderStatusShipped, db.OrderStatusDelivered, db.OrderStatusCancelled:
+	default:
+		return dtos.OrderResponse{}, ErrInvalidStatus
+	}
+
+	order, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dtos.OrderResponse{}, ErrOrderNotFound
+		}
+		return dtos.OrderResponse{}, fmt.Errorf("get order: %w", err)
+	}
+
+	items, err := s.repo.GetOrderItems(ctx, orderID)
+	if err != nil {
+		return dtos.OrderResponse{}, fmt.Errorf("get order items: %w", err)
+	}
+
+	isSeller := false
+	for _, item := range items {
+		storeID, err := s.repo.GetProductStoreID(ctx, item.ProductID)
+		if err != nil {
+			return dtos.OrderResponse{}, fmt.Errorf("get product store: %w", err)
+		}
+
+		storeOwner, err := s.solver.GetStoreOwnerByStoreID(ctx, storeID)
+		if err != nil {
+			return dtos.OrderResponse{}, fmt.Errorf("get store owner: %w", err)
+		}
+
+		if storeOwner == userID {
+			isSeller = true
+			break
+		}
+	}
+
+	isBuyer := order.UserID == userID
+
+	if !isSeller && !isBuyer {
+		return dtos.OrderResponse{}, ErrForbidden
+	}
+
+	validTransitions := map[db.OrderStatus][]db.OrderStatus{
+		db.OrderStatusPending: {db.OrderStatusPaid, db.OrderStatusCancelled},
+		db.OrderStatusPaid:    {db.OrderStatusShipped, db.OrderStatusCancelled},
+		db.OrderStatusShipped: {db.OrderStatusDelivered},
+	}
+
+	prevTransitions := validTransitions[order.Status]
+	allowed := false
+	for _, st := range prevTransitions {
+		if st == req.Status {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return dtos.OrderResponse{}, ErrInvalidStatusTrans
+	}
+
+	updated, err := s.repo.UpdateOrderStatus(ctx, db.UpdateOrderStatusParams{
+		ID:     orderID,
+		Status: req.Status,
+	})
+	if err != nil {
+		return dtos.OrderResponse{}, fmt.Errorf("update order status: %w", err)
+	}
+
+	return dtos.ToOrderResponse(updated, items), nil
+}
+
+func (s *orderService) mulNumeric(n pgtype.Numeric, factor float64) (pgtype.Numeric, error) {
+	if !n.Valid {
+		return pgtype.Numeric{Valid: false}, nil
+	}
+
+	f := big.NewFloat(factor)
+	nf := new(big.Float)
+	if _, ok := nf.SetString(n.Int.String()); !ok {
+		return pgtype.Numeric{}, fmt.Errorf("set string from %s", n.Int.String())
+	}
+
+	result := new(big.Float).Mul(nf, f)
+
+	resultStr := result.Text('f', 2)
+	var res pgtype.Numeric
+	if err := res.Scan(resultStr); err != nil {
+		return pgtype.Numeric{}, err
+	}
+	return res, nil
+}
+
+func (s *orderService) addNumeric(a, b pgtype.Numeric) (pgtype.Numeric, error) {
+	if !a.Valid && !b.Valid {
+		return pgtype.Numeric{Valid: false}, nil
+	}
+	if !a.Valid {
+		return b, nil
+	}
+	if !b.Valid {
+		return a, nil
+	}
+
+	aStr := dtos.NumericToStr(a)
+	bStr := dtos.NumericToStr(b)
+
+	var aFloat, bFloat big.Float
+	aFloat.SetString(aStr)
+	bFloat.SetString(bStr)
+
+	result := new(big.Float).Add(&aFloat, &bFloat)
+
+	resultStr := result.Text('f', 2)
+	var res pgtype.Numeric
+	if err := res.Scan(resultStr); err != nil {
+		return pgtype.Numeric{}, err
+	}
+	return res, nil
+}

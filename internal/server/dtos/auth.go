@@ -8,6 +8,7 @@ type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Username string `json:"username"`
+	Role     string `json:"role"`
 }
 
 type LoginRequest struct {
@@ -15,9 +16,7 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
+type RefreshRequest struct{}
 
 type UserResponse struct {
 	ID       int64  `json:"id"`
@@ -29,12 +28,12 @@ type UserResponse struct {
 type AuthResponse struct {
 	User         UserResponse `json:"user"`
 	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
+	RefreshToken string       `json:"-"`
 }
 
 type RefreshResponse struct {
 	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"-"`
 }
 
 func ToUserResponse(u db.User) UserResponse {
