@@ -1,0 +1,19 @@
+$inter: 'Inter', sans-serif;
+
+@font-face {
+  font-family: 'Inter';
+  src: url('../assets/fonts/InterVariable.woff2')
+    format('woff2-variations');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+$grey46: #6C757D;
+$grey91: #E3E8EF;
+$grey953: #EEF1F5;
+$grey462: #757575;
+$azure84: #CDD6E0;
+$azure12: #0B1F33;
+$azure52: #0D6EFD;
+$danger: #DC3545;

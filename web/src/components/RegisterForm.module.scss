@@ -1,0 +1,116 @@
+@use '../styles/global.scss' as *;
+
+.formClass{
+  display: flex;
+  flex-direction: column;
+  margin-top: 22px;
+  justify-content: center;
+  align-items: center;
+}
+
+.container{
+  padding-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: $inter;
+  font-weight: 600px;
+  .labelClass{
+    font-size: 13px;
+  }
+  .inputClass{
+    font-size: 14px;
+    color: $azure12;
+    border: 1px solid $azure84;
+    border-radius: 9px;
+    padding: 12px 13px;
+    width: 362px;
+    height: 45px;
+    &::placeholder {
+      color: $grey462;
+      font-size: 14px;
+    }
+  }
+}
+
+div:last-child {
+  padding-bottom: 0px;
+}
+
+.agreeContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  .agreeText{
+    font-weight: 400;
+    font-size: 12px;
+    color: $grey46;
+    font-family: $inter;
+  }
+}
+
+.enterButton {
+  margin-top: 52px;
+  background-color: $azure52;
+  border-radius: 10px;
+  width: 362px;
+  height: 48px;
+  color: white;
+  font-family: $inter;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  transition: opacity 0.2s ease;
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  &:not(:disabled):hover {
+    opacity: 0.8;
+  }
+}
+
+.inputClass:focus-visible,
+.enterButton:focus-visible,
+.choiceButton:focus-visible,
+.agreeCheck:focus-visible {
+  outline: 2px solid $azure52;
+  outline-offset: 2px;
+}
+
+.agreeText {
+  color: blue;
+  text-decoration: none;
+}
+
+.agreeText:hover {
+  text-decoration: underline;
+}
+
+.agreeText:visited {
+  color: purple;
+}
+
+.errorMes {
+  color: $danger;
+  font-family: $inter;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.serverAlert {
+  margin-top: 14px;
+  border: 1px solid rgba($danger, 0.25);
+  border-radius: 9px;
+  padding: 10px 12px;
+  width: 362px;
+  background-color: rgba($danger, 0.08);
+  color: $danger;
+  font-family: $inter;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}

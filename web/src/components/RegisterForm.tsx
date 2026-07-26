@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+
+import cls from './RegisterForm.module.scss'
 
 import { register as registerUser} from '../api/auth'
 import type { APIErrorResponse } from '../types/auth'
@@ -12,6 +14,12 @@ const registerSchema = z.object({
   username: z.string().trim().min(1, 'Введите имя пользователя'),
   email: z.string().trim().email('Введите корректный email'),
   password: z.string().min(8, 'Пароль должен содержать минимум 8 символов'),
+
+  acceptedTerms: z
+    .boolean()
+    .refine((value) => value, {
+      message: 'Необходимо принять условие'
+    }),
 })
 
 type RegisterFormData = z.infer<typeof registerSchema>
@@ -27,9 +35,19 @@ export function RegisterForm() {
     register,
     handleSubmit,
     setError,
+    control,
     formState: { errors, isSubmitting},
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    
+    defaultValues: {
+      acceptedTerms: false,
+    },
+  })
+
+  const acceptedTerms = useWatch({
+    control,
+    name: 'acceptedTerms',
   })
 
   async function onSubmit(data: RegisterFormData) {
@@ -81,40 +99,63 @@ export function RegisterForm() {
   }
 
   return (
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div>
-          <label htmlFor="username">Имя пользователя</label>
-          <input 
+      <form className={cls.formClass} onSubmit={handleSubmit(onSubmit)} noValidate>
+        <div className={cls.container}>
+          <label className={cls.labelClass} htmlFor="username">Имя пользователя</label>
+          <input
+            placeholder='ivan_petrov'
+            className={cls.inputClass} 
             id="username" 
             type="text"
             {...register('username')}
           />
-          {errors.username && <p>{errors.username.message}</p>}
+          {errors.username && <p className={cls.errorMes}>{errors.username.message}</p>}
         </div>
 
-        <div>
-          <label htmlFor="email">Email</label>
+        <div className={cls.container}>
+          <label className={cls.labelClass} htmlFor="email">Email</label>
           <input 
+            placeholder='you@example.com'
+            className={cls.inputClass}
             id="email" 
             type="email"
             {...register('email')}
           />
-          {errors.email && <p>{errors.email.message}</p>}
+          {errors.email && <p className={cls.errorMes}>{errors.email.message}</p>}
         </div>
 
-        <div>
-          <label htmlFor="password">Пароль</label>
-          <input 
+        <div className={cls.container}>
+          <label className={cls.labelClass} htmlFor="password">Пароль</label>
+          <input
+            placeholder='минимум 8 символов'
+            className={cls.inputClass} 
             id="password" 
             type="password"
             {...register('password')} 
           />
-          {errors.password && <p>{errors.password.message}</p>}
+          {errors.password && <p className={cls.errorMes}>{errors.password.message}</p>}
         </div>
 
-        {serverError && <p role="alert">{serverError}</p>}
+        <div className={cls.agreeContainer}>
+          <input 
+          className={cls.agreeCheck} 
+          id='acceptedTerms'
+          type='checkbox'
+          {...register('acceptedTerms')}
+          />
+          <a 
+            className={cls.agreeText} 
+            href="https://google.com" 
+            target='_blank'
+            rel="noopener noreferrer"
+          >
+            Соглашаюсь с условиями оферты и политикой <br></br> конфиденциальности
+          </a>
+        </div>
+
+        {serverError && <p className={cls.serverAlert} role="alert">{serverError}</p>}
         {successMessage && <p role="status">{successMessage}</p>}
-        <button type="submit" disabled={isSubmitting}>
+        <button className={cls.enterButton} type="submit" disabled={isSubmitting || !acceptedTerms}>
           {isSubmitting ? 'Регистрация...' : 'Зарегистрироваться'}
         </button>
       </form>

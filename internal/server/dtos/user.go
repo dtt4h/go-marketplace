@@ -47,6 +47,7 @@ func ToProfileResponse(u db.User) ProfileResponse {
 		AvatarURL: pgutil.TextToPtr(u.AvatarUrl),
 		Phone:     pgutil.TextToPtr(u.Phone),
 		CreatedAt: u.CreatedAt.Time,
+		Phone: textToPtr(u.Phone),
 	}
 }
 

@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
+import cls from './LoginForm.module.scss'
+
 import { login as loginUser } from '../api/auth'
 import type { APIErrorResponse } from '../types/auth'
 import { useAuthStore } from '../store/authStore'
@@ -82,33 +84,37 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <div>
-        <label htmlFor="login-email">Email</label>
+    <form className={cls.formClass} onSubmit={handleSubmit(onSubmit)} noValidate>
+      <div className={cls.emailInput}>
+        <label className={cls.authLabel} htmlFor="login-email">Email</label>
         <input
+          className={cls.inputClass}
+          placeholder='you@example.ru'
           id="login-email"
           type="email"
           autoComplete="email"
           {...register('email')}
         />
-        {errors.email && <p>{errors.email.message}</p>}
+        {errors.email && <p className={cls.errorMes}>{errors.email.message}</p>}
       </div>
 
-      <div>
-        <label htmlFor="login-password">Пароль</label>
+      <div className={cls.passwordInput}>
+        <label className={cls.authLabel} htmlFor="login-password">Пароль</label>
         <input
+          className={cls.inputClass}
+          placeholder='********'
           id="login-password"
           type="password"
           autoComplete="current-password"
           {...register('password')}
         />
-        {errors.password && <p>{errors.password.message}</p>}
+        {errors.password && <p className={cls.errorMes}>{errors.password.message}</p>}
       </div>
 
-      {serverError && <p role="alert">{serverError}</p>}
+      {serverError && <p className={cls.serverAlert} role="alert">{serverError}</p>}
       {successMessage && <p role="status">{successMessage}</p>}
 
-      <button type="submit" disabled={isSubmitting}>
+      <button className={cls.enterButton} type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Вход...' : 'Войти'}
       </button>
     </form>
