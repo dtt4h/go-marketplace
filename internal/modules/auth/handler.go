@@ -18,7 +18,7 @@ func NewAuthHandler(service AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req dtos.RegisterFormRequest
+	var req dtos.RegisterRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
 		httputil.ValidationError(w, "invalid request body", nil)
 		return
@@ -30,7 +30,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrWeakPassword):
 			httputil.ValidationError(w, err.Error(), nil)
 		case errors.Is(err, ErrEmailTaken):
-			httputil.Conflict(w, "email is already taken")
+			httputil.Conflict(w, err.Error())
 		default:
 			httputil.InternalError(w, err.Error())
 		}
@@ -41,7 +41,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req dtos.LoginFormRequest
+	var req dtos.LoginRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
 		httputil.ValidationError(w, "invalid request body", nil)
 		return
@@ -49,9 +49,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.Login(r.Context(), req)
 	if err != nil {
-		if errors.Is(err, ErrInvalidCredentials) {
+		switch {
+		case errors.Is(err, ErrInvalidCredentials):
 			httputil.Unauthorized(w, err.Error())
-		} else {
+		default:
 			httputil.InternalError(w, err.Error())
 		}
 		return
@@ -61,7 +62,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	var req dtos.RefreshFormRequest
+	var req dtos.RefreshRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
 		httputil.ValidationError(w, "invalid request body", nil)
 		return
@@ -69,9 +70,10 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.Refresh(r.Context(), req)
 	if err != nil {
-		if errors.Is(err, ErrInvalidRefreshToken) || errors.Is(err, ErrRefreshTokenExpired) {
+		switch {
+		case errors.Is(err, ErrInvalidRefreshToken), errors.Is(err, ErrRefreshTokenExpired):
 			httputil.Unauthorized(w, err.Error())
-		} else {
+		default:
 			httputil.InternalError(w, err.Error())
 		}
 		return

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -13,7 +12,7 @@ import (
 	"github.com/dtt4h/go-marketplace/internal/config"
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
-	"github.com/jackc/pgx/v5"
+	"github.com/dtt4h/go-marketplace/pkg/pgutil"
 )
 
 var (
@@ -25,9 +24,9 @@ var (
 )
 
 type AuthService interface {
-	Register(ctx context.Context, req dtos.RegisterFormRequest) (dtos.AuthResponse, error)
-	Login(ctx context.Context, req dtos.LoginFormRequest) (dtos.AuthResponse, error)
-	Refresh(ctx context.Context, req dtos.RefreshFormRequest) (dtos.RefreshResponse, error)
+	Register(ctx context.Context, req dtos.RegisterRequest) (dtos.AuthResponse, error)
+	Login(ctx context.Context, req dtos.LoginRequest) (dtos.AuthResponse, error)
+	Refresh(ctx context.Context, req dtos.RefreshRequest) (dtos.RefreshResponse, error)
 	Logout(ctx context.Context, userID int64) error
 }
 
@@ -36,11 +35,11 @@ type authService struct {
 	cfg  *config.Config
 }
 
-func NewAuthService(repo AuthRepository, cfg *config.Config) *authService {
+func NewAuthService(repo AuthRepository, cfg *config.Config) AuthService {
 	return &authService{repo: repo, cfg: cfg}
 }
 
-func (s *authService) Register(ctx context.Context, req dtos.RegisterFormRequest) (dtos.AuthResponse, error) {
+func (s *authService) Register(ctx context.Context, req dtos.RegisterRequest) (dtos.AuthResponse, error) {
 	if len(req.Password) < 8 {
 		return dtos.AuthResponse{}, ErrWeakPassword
 	}
@@ -52,7 +51,7 @@ func (s *authService) Register(ctx context.Context, req dtos.RegisterFormRequest
 
 	user, err := s.repo.CreateUser(ctx, req.Email, string(hashedPassword), db.UserRoleBuyer, req.Username)
 	if err != nil {
-		if isUniqueViolation(err) {
+		if pgutil.IsUniqueViolation(err) {
 			return dtos.AuthResponse{}, ErrEmailTaken
 		}
 		return dtos.AuthResponse{}, fmt.Errorf("create user: %w", err)
@@ -75,10 +74,10 @@ func (s *authService) Register(ctx context.Context, req dtos.RegisterFormRequest
 	}, nil
 }
 
-func (s *authService) Login(ctx context.Context, req dtos.LoginFormRequest) (dtos.AuthResponse, error) {
+func (s *authService) Login(ctx context.Context, req dtos.LoginRequest) (dtos.AuthResponse, error) {
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if pgutil.IsNoRows(err) {
 			return dtos.AuthResponse{}, ErrInvalidCredentials
 		}
 		return dtos.AuthResponse{}, fmt.Errorf("find user: %w", err)
@@ -105,10 +104,10 @@ func (s *authService) Login(ctx context.Context, req dtos.LoginFormRequest) (dto
 	}, nil
 }
 
-func (s *authService) Refresh(ctx context.Context, req dtos.RefreshFormRequest) (dtos.RefreshResponse, error) {
+func (s *authService) Refresh(ctx context.Context, req dtos.RefreshRequest) (dtos.RefreshResponse, error) {
 	token, err := s.repo.GetRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if pgutil.IsNoRows(err) {
 			return dtos.RefreshResponse{}, ErrInvalidRefreshToken
 		}
 		return dtos.RefreshResponse{}, fmt.Errorf("get refresh token: %w", err)
@@ -176,6 +175,3 @@ func (s *authService) generateTokens(userID int64, role string) (accessToken, re
 	return accessToken, refreshToken, nil
 }
 
-func isUniqueViolation(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "23505")
-}

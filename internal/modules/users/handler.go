@@ -26,9 +26,10 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.GetProfile(r.Context(), userID)
 	if err != nil {
-		if errors.Is(err, ErrNotFoundUser) {
+		switch {
+		case errors.Is(err, ErrUserNotFound):
 			httputil.NotFound(w, err.Error())
-		} else {
+		default:
 			httputil.InternalError(w, err.Error())
 		}
 		return
@@ -53,7 +54,7 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.UpdateProfile(r.Context(), userID, req)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrNotFoundUser):
+		case errors.Is(err, ErrUserNotFound):
 			httputil.NotFound(w, err.Error())
 		case errors.Is(err, ErrUsernameTaken):
 			httputil.Conflict(w, err.Error())
@@ -84,6 +85,8 @@ func (h *UserHandler) CreateStore(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, ErrStoreAlreadyExists):
 			httputil.Conflict(w, err.Error())
+		case errors.Is(err, ErrStoreNameRequired):
+			httputil.ValidationError(w, err.Error(), nil)
 		default:
 			httputil.InternalError(w, err.Error())
 		}

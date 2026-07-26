@@ -4,18 +4,18 @@ import (
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 )
 
-type RegisterFormRequest struct {
+type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Username string `json:"username"`
 }
 
-type LoginFormRequest struct {
+type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-type RefreshFormRequest struct {
+type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 

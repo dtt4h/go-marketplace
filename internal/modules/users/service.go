@@ -3,18 +3,18 @@ package users
 import (
 	"context"
 	"errors"
-	"strings"
+	"fmt"
 
-	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
-	"github.com/jackc/pgx/v5"
+	"github.com/dtt4h/go-marketplace/pkg/pgutil"
 )
 
 var (
 	ErrStoreAlreadyExists = errors.New("store already exists")
-	ErrNoStore            = errors.New("store not found")
-	ErrNotFoundUser       = errors.New("user not found")
+	ErrStoreNotFound      = errors.New("store not found")
+	ErrUserNotFound       = errors.New("user not found")
 	ErrUsernameTaken      = errors.New("username is already taken")
+	ErrStoreNameRequired  = errors.New("store name is required")
 )
 
 type UserService interface {
@@ -27,19 +27,17 @@ type userService struct {
 	repo UserRepository
 }
 
-func NewUserService(repo UserRepository) *userService {
-	return &userService{
-		repo: repo,
-	}
+func NewUserService(repo UserRepository) UserService {
+	return &userService{repo: repo}
 }
 
 func (s *userService) GetProfile(ctx context.Context, userID int64) (dtos.ProfileResponse, error) {
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return dtos.ProfileResponse{}, ErrNotFoundUser
+		if pgutil.IsNoRows(err) {
+			return dtos.ProfileResponse{}, ErrUserNotFound
 		}
-		return dtos.ProfileResponse{}, err
+		return dtos.ProfileResponse{}, fmt.Errorf("get user by id: %w", err)
 	}
 
 	return dtos.ToProfileResponse(user), nil
@@ -48,42 +46,35 @@ func (s *userService) GetProfile(ctx context.Context, userID int64) (dtos.Profil
 func (s *userService) UpdateProfile(ctx context.Context, userID int64, req dtos.UpdateProfileRequest) (dtos.ProfileResponse, error) {
 	user, err := s.repo.UpdateUser(ctx, userID, req.Username, req.AvatarURL, req.Phone)
 	if err != nil {
-		if isUniqueViolation(err) {
+		if pgutil.IsUniqueViolation(err) {
 			return dtos.ProfileResponse{}, ErrUsernameTaken
 		}
-		if errors.Is(err, pgx.ErrNoRows) {
-			return dtos.ProfileResponse{}, ErrNotFoundUser
+		if pgutil.IsNoRows(err) {
+			return dtos.ProfileResponse{}, ErrUserNotFound
 		}
-		return dtos.ProfileResponse{}, err
+		return dtos.ProfileResponse{}, fmt.Errorf("update user: %w", err)
 	}
 
 	return dtos.ToProfileResponse(user), nil
 }
 
 func (s *userService) CreateStore(ctx context.Context, userID int64, req dtos.CreateStoreRequest) (dtos.StoreResponse, error) {
+	if req.Name == "" {
+		return dtos.StoreResponse{}, ErrStoreNameRequired
+	}
 
 	_, err := s.repo.GetStoreByUserID(ctx, userID)
 	if err == nil {
 		return dtos.StoreResponse{}, ErrStoreAlreadyExists
 	}
-
-	if err != pgx.ErrNoRows {
-		return dtos.StoreResponse{}, err
+	if !pgutil.IsNoRows(err) {
+		return dtos.StoreResponse{}, fmt.Errorf("get store by user id: %w", err)
 	}
 
-	store, err := s.repo.CreateStore(ctx, userID, req.Name, req.Description, req.LogoURL)
+	store, err := s.repo.CreateStoreWithRole(ctx, userID, req.Name, req.Description, req.LogoURL)
 	if err != nil {
-		return dtos.StoreResponse{}, err
-	}
-
-	_, err = s.repo.UpdateUserRole(ctx, userID, db.UserRoleSeller)
-	if err != nil {
-		return dtos.StoreResponse{}, err
+		return dtos.StoreResponse{}, fmt.Errorf("create store with role: %w", err)
 	}
 
 	return dtos.ToStoreResponse(store), nil
-}
-
-func isUniqueViolation(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "23505")
 }
