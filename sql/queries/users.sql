@@ -13,3 +13,8 @@ UPDATE users
 SET role = $2
 WHERE id = $1
 RETURNING id, email, password_hash, role, username, avatar_url, phone, created_at, updated_at;
+
+-- name: GetStoreOwnerByStoreID :one
+SELECT s.user_id
+FROM stores s
+WHERE s.id = $1;

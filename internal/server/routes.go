@@ -7,6 +7,7 @@ import (
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/modules/auth"
+	"github.com/dtt4h/go-marketplace/internal/modules/orders"
 	"github.com/dtt4h/go-marketplace/internal/modules/products"
 	"github.com/dtt4h/go-marketplace/internal/modules/users"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
@@ -23,6 +24,7 @@ func (s *Server) setupRoutes() {
 		s.registerAuthRoutes(r)
 		s.registerUserRoutes(r)
 		s.registerProductRoutes(r)
+		s.registerOrderRoutes(r)
 	})
 }
 
@@ -72,4 +74,22 @@ func (s *Server) registerProductRoutes(r chi.Router) {
 
 	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
 		Patch("/products/{id}/moderate", productHandler.ModerateProduct)
+}
+
+func (s *Server) registerOrderRoutes(r chi.Router) {
+	queries := db.New(s.db)
+
+	orderRepo := orders.NewOrderRepository(queries)
+	userRepo := users.NewUserRepository(queries, s.db)
+	orderSvc := orders.NewOrderService(orderRepo, userRepo, s.db)
+	orderHandler := orders.NewOrderHandler(orderSvc)
+
+	r.With(mw.JWTAuth(s.cfg)).Post("/orders", orderHandler.CreateOrder)
+	r.With(mw.JWTAuth(s.cfg)).Get("/orders/me", orderHandler.ListOrdersByUser)
+	r.With(mw.JWTAuth(s.cfg)).Get("/orders/me/{id}", orderHandler.GetOrder)
+
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
+		Get("/orders/seller", orderHandler.ListOrdersBySeller)
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
+		Patch("/orders/{id}/status", orderHandler.UpdateOrderStatus)
 }
