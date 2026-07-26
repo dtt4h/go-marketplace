@@ -26,7 +26,7 @@ var (
 type AuthService interface {
 	Register(ctx context.Context, req dtos.RegisterRequest) (dtos.AuthResponse, error)
 	Login(ctx context.Context, req dtos.LoginRequest) (dtos.AuthResponse, error)
-	Refresh(ctx context.Context, req dtos.RefreshRequest) (dtos.RefreshResponse, error)
+	Refresh(ctx context.Context, refreshToken string) (dtos.RefreshResponse, error)
 	Logout(ctx context.Context, userID int64) error
 }
 
@@ -62,6 +62,10 @@ func (s *authService) Register(ctx context.Context, req dtos.RegisterRequest) (d
 		return dtos.AuthResponse{}, fmt.Errorf("generate tokens: %w", err)
 	}
 
+	if err := s.repo.DeleteUserRefreshTokens(ctx, user.ID); err != nil {
+		return dtos.AuthResponse{}, fmt.Errorf("delete old refresh tokens: %w", err)
+	}
+
 	_, err = s.repo.CreateRefreshToken(ctx, user.ID, refreshToken, time.Now().Add(s.cfg.JWT.RefreshTTL))
 	if err != nil {
 		return dtos.AuthResponse{}, fmt.Errorf("save refresh token: %w", err)
@@ -92,6 +96,10 @@ func (s *authService) Login(ctx context.Context, req dtos.LoginRequest) (dtos.Au
 		return dtos.AuthResponse{}, fmt.Errorf("generate tokens: %w", err)
 	}
 
+	if err := s.repo.DeleteUserRefreshTokens(ctx, user.ID); err != nil {
+		return dtos.AuthResponse{}, fmt.Errorf("delete old refresh tokens: %w", err)
+	}
+
 	_, err = s.repo.CreateRefreshToken(ctx, user.ID, refreshToken, time.Now().Add(s.cfg.JWT.RefreshTTL))
 	if err != nil {
 		return dtos.AuthResponse{}, fmt.Errorf("save refresh token: %w", err)
@@ -104,8 +112,8 @@ func (s *authService) Login(ctx context.Context, req dtos.LoginRequest) (dtos.Au
 	}, nil
 }
 
-func (s *authService) Refresh(ctx context.Context, req dtos.RefreshRequest) (dtos.RefreshResponse, error) {
-	token, err := s.repo.GetRefreshToken(ctx, req.RefreshToken)
+func (s *authService) Refresh(ctx context.Context, refreshToken string) (dtos.RefreshResponse, error) {
+	token, err := s.repo.GetRefreshToken(ctx, refreshToken)
 	if err != nil {
 		if pgutil.IsNoRows(err) {
 			return dtos.RefreshResponse{}, ErrInvalidRefreshToken
@@ -114,7 +122,7 @@ func (s *authService) Refresh(ctx context.Context, req dtos.RefreshRequest) (dto
 	}
 
 	if time.Now().After(token.ExpiresAt.Time) {
-		_ = s.repo.DeleteRefreshToken(ctx, req.RefreshToken)
+		_ = s.repo.DeleteRefreshToken(ctx, refreshToken)
 		return dtos.RefreshResponse{}, ErrRefreshTokenExpired
 	}
 
@@ -123,7 +131,7 @@ func (s *authService) Refresh(ctx context.Context, req dtos.RefreshRequest) (dto
 		return dtos.RefreshResponse{}, fmt.Errorf("find user: %w", err)
 	}
 
-	if err := s.repo.DeleteRefreshToken(ctx, req.RefreshToken); err != nil {
+	if err := s.repo.DeleteRefreshToken(ctx, refreshToken); err != nil {
 		return dtos.RefreshResponse{}, fmt.Errorf("delete old refresh token: %w", err)
 	}
 
@@ -138,8 +146,7 @@ func (s *authService) Refresh(ctx context.Context, req dtos.RefreshRequest) (dto
 	}
 
 	return dtos.RefreshResponse{
-		AccessToken:  accessToken,
-		RefreshToken: newRefreshToken,
+		AccessToken: accessToken,
 	}, nil
 }
 
