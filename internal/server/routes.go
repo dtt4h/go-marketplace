@@ -8,6 +8,7 @@ import (
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/modules/auth"
 	"github.com/dtt4h/go-marketplace/internal/modules/orders"
+	"github.com/dtt4h/go-marketplace/internal/modules/payments"
 	"github.com/dtt4h/go-marketplace/internal/modules/products"
 	"github.com/dtt4h/go-marketplace/internal/modules/users"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
@@ -25,6 +26,7 @@ func (s *Server) setupRoutes() {
 		s.registerUserRoutes(r)
 		s.registerProductRoutes(r)
 		s.registerOrderRoutes(r)
+		s.registerPaymentRoutes(r)
 	})
 }
 
@@ -92,4 +94,18 @@ func (s *Server) registerOrderRoutes(r chi.Router) {
 		Get("/orders/seller", orderHandler.ListOrdersBySeller)
 	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
 		Patch("/orders/{id}/status", orderHandler.UpdateOrderStatus)
+}
+
+func (s *Server) registerPaymentRoutes(r chi.Router) {
+	queries := db.New(s.db)
+
+	paymentRepo := payments.NewPaymentRepository(queries, s.db)
+	orderRepo := orders.NewOrderRepository(queries)
+	paymentSvc := payments.NewPaymentService(paymentRepo, orderRepo, s.db)
+	paymentHandler := payments.NewPaymentHandler(paymentSvc)
+
+	r.With(mw.JWTAuth(s.cfg)).Post("/payments", paymentHandler.CreatePayment)
+	r.With(mw.JWTAuth(s.cfg)).Get("/payments/{id}", paymentHandler.GetPayment)
+	r.Post("/payments/webhook", paymentHandler.Webhook)
+	r.With(mw.JWTAuth(s.cfg)).Post("/payments/{id}/refund", paymentHandler.RefundPayment)
 }
