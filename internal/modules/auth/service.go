@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -74,7 +76,7 @@ func (s *authService) Register(ctx context.Context, req dtos.RegisterRequest) (d
 		return dtos.AuthResponse{}, fmt.Errorf("delete old refresh tokens: %w", err)
 	}
 
-	_, err = s.repo.CreateRefreshToken(ctx, user.ID, refreshToken, time.Now().Add(s.cfg.JWT.RefreshTTL))
+	_, err = s.repo.CreateRefreshToken(ctx, user.ID, hashToken(refreshToken), time.Now().Add(s.cfg.JWT.RefreshTTL))
 	if err != nil {
 		return dtos.AuthResponse{}, fmt.Errorf("save refresh token: %w", err)
 	}
@@ -108,7 +110,7 @@ func (s *authService) Login(ctx context.Context, req dtos.LoginRequest) (dtos.Au
 		return dtos.AuthResponse{}, fmt.Errorf("delete old refresh tokens: %w", err)
 	}
 
-	_, err = s.repo.CreateRefreshToken(ctx, user.ID, refreshToken, time.Now().Add(s.cfg.JWT.RefreshTTL))
+	_, err = s.repo.CreateRefreshToken(ctx, user.ID, hashToken(refreshToken), time.Now().Add(s.cfg.JWT.RefreshTTL))
 	if err != nil {
 		return dtos.AuthResponse{}, fmt.Errorf("save refresh token: %w", err)
 	}
@@ -121,7 +123,9 @@ func (s *authService) Login(ctx context.Context, req dtos.LoginRequest) (dtos.Au
 }
 
 func (s *authService) Refresh(ctx context.Context, refreshToken string) (dtos.RefreshResponse, error) {
-	token, err := s.repo.GetRefreshToken(ctx, refreshToken)
+	tokenHash := hashToken(refreshToken)
+
+	token, err := s.repo.GetRefreshToken(ctx, tokenHash)
 	if err != nil {
 		if pgutil.IsNoRows(err) {
 			return dtos.RefreshResponse{}, ErrInvalidRefreshToken
@@ -130,7 +134,7 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (dtos.Re
 	}
 
 	if time.Now().After(token.ExpiresAt.Time) {
-		_ = s.repo.DeleteRefreshToken(ctx, refreshToken)
+		_ = s.repo.DeleteRefreshToken(ctx, tokenHash)
 		return dtos.RefreshResponse{}, ErrRefreshTokenExpired
 	}
 
@@ -139,7 +143,7 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (dtos.Re
 		return dtos.RefreshResponse{}, fmt.Errorf("find user: %w", err)
 	}
 
-	if err := s.repo.DeleteRefreshToken(ctx, refreshToken); err != nil {
+	if err := s.repo.DeleteRefreshToken(ctx, tokenHash); err != nil {
 		return dtos.RefreshResponse{}, fmt.Errorf("delete old refresh token: %w", err)
 	}
 
@@ -148,18 +152,24 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (dtos.Re
 		return dtos.RefreshResponse{}, fmt.Errorf("generate tokens: %w", err)
 	}
 
-	_, err = s.repo.CreateRefreshToken(ctx, user.ID, newRefreshToken, time.Now().Add(s.cfg.JWT.RefreshTTL))
+	_, err = s.repo.CreateRefreshToken(ctx, user.ID, hashToken(newRefreshToken), time.Now().Add(s.cfg.JWT.RefreshTTL))
 	if err != nil {
 		return dtos.RefreshResponse{}, fmt.Errorf("save new refresh token: %w", err)
 	}
 
 	return dtos.RefreshResponse{
-		AccessToken: accessToken,
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
 	}, nil
 }
 
 func (s *authService) Logout(ctx context.Context, userID int64) error {
 	return s.repo.DeleteUserRefreshTokens(ctx, userID)
+}
+
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }
 
 func (s *authService) generateTokens(userID int64, role string) (accessToken, refreshToken string, err error) {
