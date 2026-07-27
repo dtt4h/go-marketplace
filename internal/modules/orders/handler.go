@@ -52,6 +52,10 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 			httputil.ValidationError(w, err.Error(), nil)
 		case errors.Is(err, ErrInsufficientStock):
 			httputil.ValidationError(w, err.Error(), nil)
+		case errors.Is(err, ErrInvalidQuantity):
+			httputil.ValidationError(w, err.Error(), nil)
+		case errors.Is(err, ErrProductNotFound):
+			httputil.NotFound(w, err.Error())
 		default:
 			httputil.InternalError(w, err.Error())
 		}

@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countOrderItems = `-- name: CountOrderItems :one
+SELECT COUNT(*) FROM order_items WHERE order_id = $1
+`
+
+func (q *Queries) CountOrderItems(ctx context.Context, orderID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrderItems, orderID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createOrder = `-- name: CreateOrder :one
 INSERT INTO orders (user_id, status, total, address)
 VALUES ($1, 'pending', $2, $3)

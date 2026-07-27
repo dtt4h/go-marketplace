@@ -100,6 +100,7 @@ func ToOrderSellerListItem(order db.Order, buyerUsername string, items []db.GetO
 	itemResponses := make([]OrderItemResponse, 0, len(items))
 	for _, item := range items {
 		itemResponses = append(itemResponses, OrderItemResponse{
+			ID:           item.ID,
 			ProductID:    item.ProductID,
 			Quantity:     item.Quantity,
 			Price:        NumericToStr(item.Price),

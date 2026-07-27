@@ -20,6 +20,8 @@ var (
 	ErrOrderEmpty         = errors.New("order must have at least one item")
 	ErrInvalidStatus      = errors.New("invalid order status")
 	ErrInvalidStatusTrans = errors.New("invalid status transition")
+	ErrInvalidQuantity    = errors.New("quantity must be greater than zero")
+	ErrProductNotFound    = errors.New("product not found")
 )
 
 type storeResolver interface {
@@ -69,7 +71,7 @@ func (s *orderService) CreateOrder(ctx context.Context, userID int64, req dtos.C
 
 	for _, item := range req.Items {
 		if item.Quantity <= 0 {
-			return dtos.OrderResponse{}, fmt.Errorf("invalid quantity for product %d", item.ProductID)
+			return dtos.OrderResponse{}, ErrInvalidQuantity
 		}
 
 		stockRow, err := q.DecrementProductStock(ctx, db.DecrementProductStockParams{
@@ -78,12 +80,12 @@ func (s *orderService) CreateOrder(ctx context.Context, userID int64, req dtos.C
 		})
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return dtos.OrderResponse{}, ErrInsufficientStock
+				return dtos.OrderResponse{}, ErrProductNotFound
 			}
 			return dtos.OrderResponse{}, fmt.Errorf("decrement stock for product %d: %w", item.ProductID, err)
 		}
 
-		itemTotal, err := s.mulNumeric(stockRow.Price, float64(item.Quantity))
+		itemTotal, err := s.mulNumeric(stockRow.Price, item.Quantity)
 		if err != nil {
 			return dtos.OrderResponse{}, fmt.Errorf("calc item total: %w", err)
 		}
@@ -137,8 +139,31 @@ func (s *orderService) GetOrder(ctx context.Context, userID, orderID int64) (dto
 		return dtos.OrderResponse{}, fmt.Errorf("get order: %w", err)
 	}
 
+	// Allow access to buyer (owner) or seller (whose products are in the order)
 	if order.UserID != userID {
-		return dtos.OrderResponse{}, ErrForbidden
+		items, err := s.repo.GetOrderItems(ctx, orderID)
+		if err != nil {
+			return dtos.OrderResponse{}, fmt.Errorf("get order items: %w", err)
+		}
+
+		isSeller := false
+		for _, item := range items {
+			storeID, err := s.repo.GetProductStoreID(ctx, item.ProductID)
+			if err != nil {
+				return dtos.OrderResponse{}, fmt.Errorf("get product store: %w", err)
+			}
+			storeOwner, err := s.solver.GetStoreOwnerByStoreID(ctx, storeID)
+			if err != nil {
+				return dtos.OrderResponse{}, fmt.Errorf("get store owner: %w", err)
+			}
+			if storeOwner == userID {
+				isSeller = true
+				break
+			}
+		}
+		if !isSeller {
+			return dtos.OrderResponse{}, ErrForbidden
+		}
 	}
 
 	items, err := s.repo.GetOrderItems(ctx, orderID)
@@ -161,7 +186,11 @@ func (s *orderService) ListOrdersByUser(ctx context.Context, userID int64, page,
 
 	result := make([]dtos.OrderListItem, 0, len(orders))
 	for _, order := range orders {
-		result = append(result, dtos.ToOrderListItem(order, 0))
+		count, err := s.repo.CountOrderItems(ctx, order.ID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("count order items for %d: %w", order.ID, err)
+		}
+		result = append(result, dtos.ToOrderListItem(order, int32(count)))
 	}
 
 	return result, total, nil
@@ -198,7 +227,7 @@ func (s *orderService) ListOrdersBySeller(ctx context.Context, userID int64, pag
 
 func (s *orderService) UpdateOrderStatus(ctx context.Context, userID int64, orderID int64, req dtos.UpdateOrderStatusRequest) (dtos.OrderResponse, error) {
 	switch req.Status {
-	case db.OrderStatusPaid, db.OrderStatusShipped, db.OrderStatusDelivered, db.OrderStatusCancelled:
+	case db.OrderStatusPending, db.OrderStatusPaid, db.OrderStatusShipped, db.OrderStatusDelivered, db.OrderStatusCancelled:
 	default:
 		return dtos.OrderResponse{}, ErrInvalidStatus
 	}
@@ -240,10 +269,21 @@ func (s *orderService) UpdateOrderStatus(ctx context.Context, userID int64, orde
 		return dtos.OrderResponse{}, ErrForbidden
 	}
 
-	validTransitions := map[db.OrderStatus][]db.OrderStatus{
-		db.OrderStatusPending: {db.OrderStatusPaid, db.OrderStatusCancelled},
-		db.OrderStatusPaid:    {db.OrderStatusShipped, db.OrderStatusCancelled},
-		db.OrderStatusShipped: {db.OrderStatusDelivered},
+	// Seller transitions: shipped, delivered, cancelled
+	// Buyer transitions: cancelled
+	// paid is set only by payment webhook
+	var validTransitions map[db.OrderStatus][]db.OrderStatus
+	if isSeller && !isBuyer {
+		validTransitions = map[db.OrderStatus][]db.OrderStatus{
+			db.OrderStatusPending: {db.OrderStatusCancelled},
+			db.OrderStatusPaid:    {db.OrderStatusShipped, db.OrderStatusCancelled},
+			db.OrderStatusShipped: {db.OrderStatusDelivered},
+		}
+	} else {
+		validTransitions = map[db.OrderStatus][]db.OrderStatus{
+			db.OrderStatusPending: {db.OrderStatusCancelled},
+			db.OrderStatusPaid:    {db.OrderStatusCancelled},
+		}
 	}
 
 	prevTransitions := validTransitions[order.Status]
@@ -269,18 +309,19 @@ func (s *orderService) UpdateOrderStatus(ctx context.Context, userID int64, orde
 	return dtos.ToOrderResponse(updated, items), nil
 }
 
-func (s *orderService) mulNumeric(n pgtype.Numeric, factor float64) (pgtype.Numeric, error) {
+func (s *orderService) mulNumeric(n pgtype.Numeric, factor int32) (pgtype.Numeric, error) {
 	if !n.Valid {
 		return pgtype.Numeric{Valid: false}, nil
 	}
 
-	f := big.NewFloat(factor)
-	nf := new(big.Float)
-	if _, ok := nf.SetString(n.Int.String()); !ok {
-		return pgtype.Numeric{}, fmt.Errorf("set string from %s", n.Int.String())
+	str := dtos.NumericToStr(n)
+	f, _, err := big.ParseFloat(str, 10, 256, big.ToNearestEven)
+	if err != nil {
+		return pgtype.Numeric{}, fmt.Errorf("parse numeric %s: %w", str, err)
 	}
 
-	result := new(big.Float).Mul(nf, f)
+	multiplier := big.NewFloat(float64(factor))
+	result := new(big.Float).Mul(f, multiplier)
 
 	resultStr := result.Text('f', 2)
 	var res pgtype.Numeric
