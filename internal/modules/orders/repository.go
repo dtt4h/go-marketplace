@@ -17,6 +17,7 @@ type OrderRepository interface {
 	UpdateOrderStatus(ctx context.Context, arg db.UpdateOrderStatusParams) (db.Order, error)
 	DecrementProductStock(ctx context.Context, arg db.DecrementProductStockParams) (db.DecrementProductStockRow, error)
 	GetProductStoreID(ctx context.Context, productID int64) (int64, error)
+	CountOrderItems(ctx context.Context, orderID int64) (int64, error)
 }
 
 type orderRepository struct {
@@ -93,4 +94,8 @@ func (r *orderRepository) DecrementProductStock(ctx context.Context, arg db.Decr
 
 func (r *orderRepository) GetProductStoreID(ctx context.Context, productID int64) (int64, error) {
 	return r.queries.GetProductStoreID(ctx, productID)
+}
+
+func (r *orderRepository) CountOrderItems(ctx context.Context, orderID int64) (int64, error) {
+	return r.queries.CountOrderItems(ctx, orderID)
 }

@@ -4,6 +4,8 @@ Base URL: `/api/v1`
 
 Все ответы — JSON. Кодировка — UTF-8.
 
+Swagger-документация доступна по адресу: `/swagger/index.html`
+
 ## Аутентификация
 
 JWT Bearer token в заголовке:
@@ -22,9 +24,10 @@ Authorization: Bearer <access_token>
 }
 ```
 
-- **Access token** — срок жизни 15 минут (настраивается через `JWT_ACCESS_TTL`)
-- **Refresh token** — срок жизни 7 дней (настраивается через `JWT_REFRESH_TTL`)
+- **Access token** — срок жизни 15 минут (настраивается через `JWT_ACCESS_TTL`), передаётся в JSON-ответе и заголовке `Authorization`
+- **Refresh token** — срок жизни 7 дней (настраивается через `JWT_REFRESH_TTL`), передаётся в **httpOnly cookie** (`refresh_token`), не возвращается в JSON-теле ответа (`json:"-"`)
 - Рефреш-токен хранится в БД (таблица `refresh_tokens`), при refresh — ротация (старый удаляется, создаётся новый)
+- Cookie: `HttpOnly`, `SameSite=Strict`, `Path=/`, `MaxAge=7d`
 
 Эндпоинты, требующие авторизации, помечены 🔒. Эндпоинты, требующие определённую роль, помечены 🔒 `[role]`.
 
@@ -46,7 +49,7 @@ Authorization: Bearer <access_token>
 | `UNAUTHORIZED` | 401 | Не авторизован / неверный токен / неверный пароль |
 | `FORBIDDEN` | 403 | Недостаточно прав |
 | `NOT_FOUND` | 404 | Ресурс не найден |
-| `CONFLICT` | 409 | Конфликт (email занят, username занят) |
+| `CONFLICT` | 409 | Конфликт (email занят, магазин уже существует) |
 | `INTERNAL_ERROR` | 500 | Внутренняя ошибка сервера |
 
 ---
@@ -54,14 +57,15 @@ Authorization: Bearer <access_token>
 ## Auth
 
 ### POST `/auth/register`
-Регистрация нового пользователя. Создаётся пользователь с ролью `buyer`.
+Регистрация нового пользователя. Создаётся пользователь с ролью `buyer` (поле `role` в запросе игнорируется, всегда `buyer`).
 
 **Request:**
 ```json
 {
   "email": "user@example.com",
   "password": "secret123",
-  "username": "ivan"
+  "username": "ivan",
+  "role": "buyer"
 }
 ```
 
@@ -79,10 +83,11 @@ Authorization: Bearer <access_token>
     "role": "buyer",
     "username": "ivan"
   },
-  "access_token": "eyJhbGci...",
-  "refresh_token": "eyJhbGci..."
+  "access_token": "eyJhbGci..."
 }
 ```
+
+> Refresh token устанавливается в httpOnly cookie `refresh_token`.
 
 **Ошибки:**
 - `VALIDATION_ERROR` (400) — слабый пароль, невалидный email
@@ -108,47 +113,39 @@ Authorization: Bearer <access_token>
     "role": "buyer",
     "username": "ivan"
   },
-  "access_token": "eyJhbGci...",
-  "refresh_token": "eyJhbGci..."
+  "access_token": "eyJhbGci..."
 }
 ```
+
+> Refresh token устанавливается в httpOnly cookie `refresh_token`.
 
 **Ошибки:**
 - `UNAUTHORIZED` (401) — неверный email или пароль
 
 ### POST `/auth/refresh`
-Обновление токенов. Старый refresh-токен удаляется, создаётся новая пара (ротация).
+Обновление токенов. Читает refresh-токен из cookie `refresh_token`. Старый refresh-токен удаляется, создаётся новая пара (ротация).
 
-**Request:**
-```json
-{
-  "refresh_token": "eyJhbGci..."
-}
-```
+**Request:** тело пустое (токен берётся из cookie)
 
 **Response 200:**
 ```json
 {
-  "access_token": "eyJhbGci...",
-  "refresh_token": "eyJhbGci..."
+  "access_token": "eyJhbGci..."
 }
 ```
 
+> Новый refresh token устанавливается в httpOnly cookie.
+
 **Ошибки:**
-- `UNAUTHORIZED` (401) — невалидный или истёкший refresh-токен
+- `UNAUTHORIZED` (401) — отсутствует cookie, невалидный или истёкший refresh-токен
 
 ### POST `/auth/logout` 🔒
-Выход. Удаляет **все** refresh-токены текущего пользователя (завершает все сессии).
-
-**Ошибки:**
-- `UNAUTHORIZED` (401) — отсутствует или невалидный access-токен
+Выход. Удаляет **все** refresh-токены текущего пользователя (завершает все сессии). Очищает cookie.
 
 **Response 204:** No Content
 
-### ~~POST `/auth/password-reset`~~ <!-- TODO -->
-### ~~POST `/auth/password-reset/confirm`~~ <!-- TODO -->
-
-> Сброс пароля запланирован на следующий релиз.
+**Ошибки:**
+- `UNAUTHORIZED` (401) — отсутствует или невалидный access-токен
 
 ---
 
@@ -170,8 +167,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Ошибки:**
-- `NOT_FOUND` (404) — пользователь не найден
+> Поля `avatar_url` и `phone` присутствуют только если заданы (`omitempty`).
 
 ### PATCH `/users/me` 🔒
 Обновление профиля. Только переданные поля обновляются.
@@ -198,10 +194,6 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Ошибки:**
-- `CONFLICT` (409) — username уже занят
-- `NOT_FOUND` (404) — пользователь не найден
-
 ### POST `/users/me/store` 🔒
 Регистрация в качестве продавца (создание магазина). Автоматически меняет роль пользователя на `seller`.
 
@@ -213,6 +205,8 @@ Authorization: Bearer <access_token>
   "logo_url": "https://..."
 }
 ```
+
+> Поля `description` и `logo_url` необязательные.
 
 **Response 201:**
 ```json
@@ -229,50 +223,26 @@ Authorization: Bearer <access_token>
 **Ошибки:**
 - `CONFLICT` (409) — магазин уже существует
 
-### GET `/users/me/orders` 🔒
-История заказов покупателя.
-
-**Query params:** `page`, `limit`, `status`
-
-**Response 200:**
-```json
-{
-  "items": [
-    {
-      "id": 1,
-      "status": "delivered",
-      "total": "1500.00",
-      "address": "г. Москва, ул. Пушкина, д. 10",
-      "items_count": 3,
-      "created_at": "2026-07-19T10:00:00Z"
-    }
-  ],
-  "total": 1,
-  "page": 1,
-  "limit": 20
-}
-```
+> После создания магазина нужно заново выполнить `POST /auth/login`, чтобы получить access-токен с ролью `seller`.
 
 ---
 
 ## Products
 
-> Модуль в разработке. Спецификация ниже — целевая.
-
 ### GET `/products`
-Список товаров с фильтрацией и пагинацией.
+Список товаров с фильтрацией и пагинацией. Только товары со статусом `active`.
 
 **Query params:**
 
 | Параметр | Тип | Описание |
 |----------|-----|----------|
-| `page` | int | Страница (default 1) |
+| `page` | int | Страница (default 1, min 1) |
 | `limit` | int | Лимит (default 20, max 100) |
 | `category_id` | int | Фильтр по категории |
 | `store_id` | int | Фильтр по магазину |
 | `min_price` | float | Минимальная цена |
 | `max_price` | float | Максимальная цена |
-| `search` | string | Поиск по названию (триграммный поиск через pg_trgm) |
+| `search` | string | Поиск по названию (ILIKE) |
 | `sort` | string | Сортировка: `price_asc`, `price_desc`, `created_desc` (default) |
 
 **Response 200:**
@@ -282,16 +252,11 @@ Authorization: Bearer <access_token>
     {
       "id": 1,
       "title": "Ноутбук",
-      "price": "50000.00",
+      "price": "50000",
       "stock": 10,
-      "images": ["https://..."],
       "store": {
         "id": 1,
         "name": "ТехноМир"
-      },
-      "category": {
-        "id": 5,
-        "name": "Электроника"
       },
       "created_at": "2026-07-19T10:00:00Z"
     }
@@ -311,12 +276,11 @@ Authorization: Bearer <access_token>
   "id": 1,
   "title": "Ноутбук",
   "description": "Мощный ноутбук для работы",
-  "price": "50000.00",
+  "price": "50000",
   "stock": 10,
   "status": "active",
   "images": [
-    {"id": 1, "url": "https://...", "position": 0},
-    {"id": 2, "url": "https://...", "position": 1}
+    {"id": 1, "url": "https://...", "position": 0}
   ],
   "store": {
     "id": 1,
@@ -325,15 +289,19 @@ Authorization: Bearer <access_token>
   },
   "category": {
     "id": 5,
-    "name": "Электроника"
+    "name": "Электроника",
+    "slug": "electronics"
   },
   "created_at": "2026-07-19T10:00:00Z",
   "updated_at": "2026-07-19T10:00:00Z"
 }
 ```
 
+**Ошибки:**
+- `NOT_FOUND` (404) — товар не найден
+
 ### POST `/products` 🔒 `[seller]`
-Создание товара.
+Создание товара. Новый товар получает статус `pending` (требует модерации).
 
 **Request:**
 ```json
@@ -347,25 +315,37 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**Правила валидации:**
+- `title` — обязательное
+- `price` — обязательное, положительное число
+- `stock` — неотрицательное
+- `category_id`, `description`, `images` — необязательные
+
 **Response 201:**
 ```json
 {
   "id": 1,
   "title": "Ноутбук",
   "description": "Мощный ноутбук для работы",
-  "price": "50000.00",
+  "price": "50000",
   "stock": 10,
   "status": "pending",
   "images": [
     {"id": 1, "url": "https://...", "position": 0}
   ],
-  "category": {
-    "id": 5,
-    "name": "Электроника"
+  "store": {
+    "id": 1,
+    "name": "ТехноМир",
+    "description": "Магазин электроники"
   },
-  "created_at": "2026-07-19T10:00:00Z"
+  "created_at": "2026-07-19T10:00:00Z",
+  "updated_at": "2026-07-19T10:00:00Z"
 }
 ```
+
+**Ошибки:**
+- `VALIDATION_ERROR` (400) — пустой title, невалидная цена
+- `FORBIDDEN` (403) — пользователь не продавец
 
 ### PATCH `/products/{id}` 🔒 `[seller]`
 Обновление товара. Только владелец магазина.
@@ -379,7 +359,13 @@ Authorization: Bearer <access_token>
 }
 ```
 
+> Все поля необязательные — обновляются только переданные.
+
 **Response 200:** (как GET `/products/{id}`)
+
+**Ошибки:**
+- `FORBIDDEN` (403) — не владелец
+- `NOT_FOUND` (404) — товар не найден
 
 ### DELETE `/products/{id}` 🔒 `[seller]`
 Удаление товара. Только владелец магазина.
@@ -387,7 +373,7 @@ Authorization: Bearer <access_token>
 **Response 204:** No Content
 
 ### GET `/products/categories`
-Дерево категорий.
+Дерево категорий (рекурсивный CTE).
 
 **Response 200:**
 ```json
@@ -400,8 +386,7 @@ Authorization: Bearer <access_token>
       {
         "id": 5,
         "name": "Ноутбуки",
-        "slug": "laptops",
-        "children": []
+        "slug": "laptops"
       }
     ]
   }
@@ -414,21 +399,23 @@ Authorization: Bearer <access_token>
 **Request:**
 ```json
 {
-  "status": "active",
-  "reason": null
+  "status": "active"
 }
 ```
 
+> Допустимые статусы: `active`, `rejected`, `archived`.
+
 **Response 200:** (как GET `/products/{id}`)
+
+**Ошибки:**
+- `FORBIDDEN` (403) — не админ
 
 ---
 
 ## Orders
 
-> Модуль в разработке. Спецификация ниже — целевая.
-
 ### POST `/orders` 🔒
-Создание заказа из корзины.
+Создание заказа. Списывает товар со склада в транзакции.
 
 **Request:**
 ```json
@@ -441,55 +428,73 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**Правила валидации:**
+- `items` — минимум 1 элемент
+- `quantity` — больше 0
+- Товар должен существовать и иметь достаточный остаток
+
 **Response 201:**
 ```json
 {
   "id": 1,
   "status": "pending",
-  "total": "105000.00",
+  "total": "105000",
   "address": "г. Москва, ул. Пушкина, д. 10, кв. 5",
   "items": [
     {
       "id": 1,
       "product_id": 1,
       "quantity": 2,
-      "price": "50000.00",
+      "price": "50000",
       "product_title": "Ноутбук"
-    },
-    {
-      "id": 2,
-      "product_id": 5,
-      "quantity": 1,
-      "price": "5000.00",
-      "product_title": "Мышка"
     }
   ],
   "created_at": "2026-07-19T10:00:00Z"
 }
 ```
 
-### GET `/orders/{id}` 🔒
-Детали заказа. Доступен покупателю (владельцу) и продавцам, чьи товары в заказе.
+**Ошибки:**
+- `VALIDATION_ERROR` (400) — пустой заказ, `quantity <= 0`
+- `NOT_FOUND` (404) — товар не найден
+- `VALIDATION_ERROR` (400) — недостаточный остаток
 
-**Response 200:** (как в POST `/orders`)
+### GET `/orders/me` 🔒
+Список заказов текущего пользователя (покупателя).
 
-### POST `/orders/{id}/cancel` 🔒
-Отмена заказа. Доступна покупателю (если статус `pending` или `paid`) и продавцу.
+**Query params:** `page` (default 1), `limit` (default 20, max 100)
 
 **Response 200:**
 ```json
 {
-  "id": 1,
-  "status": "cancelled",
-  "total": "105000.00",
-  "created_at": "2026-07-19T10:00:00Z"
+  "items": [
+    {
+      "id": 1,
+      "status": "delivered",
+      "total": "1500",
+      "address": "г. Москва, ул. Пушкина, д. 10",
+      "items_count": 3,
+      "created_at": "2026-07-19T10:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 20
 }
 ```
+
+### GET `/orders/me/{id}` 🔒
+Детали заказа. Доступен покупателю (владельцу) и продавцам, чьи товары в заказе.
+
+**Response 200:** (как в POST `/orders`)
+
+**Ошибки:**
+- `NOT_FOUND` (404) — заказ не найден
+- `FORBIDDEN` (403) — доступ запрещён (не покупатель и не продавец товаров в заказе)
 
 ### GET `/orders/seller` 🔒 `[seller]`
 Заказы, содержащие товары текущего продавца.
 
-**Query params:** `page`, `limit`, `status`
+**Query params:** `page` (default 1), `limit` (default 20, max 100)
 
 **Response 200:**
 ```json
@@ -498,16 +503,17 @@ Authorization: Bearer <access_token>
     {
       "id": 1,
       "status": "paid",
-      "total": "105000.00",
+      "total": "105000",
       "buyer": {
         "id": 10,
         "username": "ivan"
       },
       "items": [
         {
+          "id": 1,
           "product_id": 1,
           "quantity": 2,
-          "price": "50000.00",
+          "price": "50000",
           "product_title": "Ноутбук"
         }
       ],
@@ -521,7 +527,7 @@ Authorization: Bearer <access_token>
 ```
 
 ### PATCH `/orders/{id}/status` 🔒 `[seller]`
-Обновление статуса заказа продавцом.
+Обновление статуса заказа. Доступна продавцу (для товаров в заказе) и покупателю (владельцу заказа).
 
 **Request:**
 ```json
@@ -530,16 +536,30 @@ Authorization: Bearer <access_token>
 }
 ```
 
-**Response 200:** (как GET `/orders/{id}`)
+**Допустимые переходы:**
+
+| Текущий статус | Доступные переходы | Кто может |
+|----------------|-------------------|-----------|
+| `pending` | `cancelled` | покупатель, продавец |
+| `paid` | `shipped`, `cancelled` | продавец |
+| `paid` | `cancelled` | покупатель |
+| `shipped` | `delivered` | продавец |
+
+> Статус `paid` устанавливается **только** через платёжный webhook, недоступен вручную.
+
+**Response 200:** (как GET `/orders/me/{id}`)
+
+**Ошибки:**
+- `VALIDATION_ERROR` (400) — невалидный статус или недопустимый переход
+- `FORBIDDEN` (403) — не продавец и не покупатель
+- `NOT_FOUND` (404) — заказ не найден
 
 ---
 
 ## Payments
 
-> Модуль в разработке. Спецификация ниже — целевая.
-
 ### POST `/payments` 🔒
-Инициализация платежа по заказу.
+Инициализация платежа по заказу. Заказ должен быть в статусе `pending`.
 
 **Request:**
 ```json
@@ -553,36 +573,56 @@ Authorization: Bearer <access_token>
 {
   "id": 1,
   "order_id": 1,
-  "amount": "105000.00",
+  "amount": "105000",
   "currency": "RUB",
   "status": "pending",
-  "provider": "yookassa",
-  "confirmation_url": "https://pay.yookassa.ru/..."
+  "provider": "mock",
+  "created_at": "2026-07-19T10:00:00Z",
+  "updated_at": "2026-07-19T10:00:00Z"
 }
 ```
 
+**Ошибки:**
+- `NOT_FOUND` (404) — заказ не найден
+- `CONFLICT` (409) — платёж уже существует
+- `VALIDATION_ERROR` (400) — заказ уже оплачен
+
 ### GET `/payments/{id}` 🔒
-Статус платежа.
+Статус платежа. Доступен только владельцу заказа.
 
 **Response 200:**
 ```json
 {
   "id": 1,
   "order_id": 1,
-  "amount": "105000.00",
+  "amount": "105000",
   "currency": "RUB",
   "status": "succeeded",
-  "provider": "yookassa",
+  "provider": "mock",
   "provider_payment_id": "pm-123456",
   "created_at": "2026-07-19T10:00:00Z",
   "updated_at": "2026-07-19T10:05:00Z"
 }
 ```
 
-### POST `/payments/webhook`
-Webhook от платёжного провайдера. Не требует JWT, авторизация через подпись провайдера.
+> Поле `provider_payment_id` присутствует только если задано (`omitempty`).
 
-**Request:** (формат зависит от провайдера)
+**Ошибки:**
+- `NOT_FOUND` (404) — платёж не найден
+
+### POST `/payments/webhook`
+Webhook от платёжного провайдера. Не требует JWT. При статусе `succeeded` — переводит заказ в `paid`.
+
+**Request:**
+```json
+{
+  "order_id": 1,
+  "provider_payment_id": "pm-123456",
+  "status": "succeeded"
+}
+```
+
+> Допустимые статусы: `succeeded`, `failed`.
 
 **Response 200:**
 ```json
@@ -591,19 +631,28 @@ Webhook от платёжного провайдера. Не требует JWT,
 }
 ```
 
+**Ошибки:**
+- `NOT_FOUND` (404) — платёж не найден
+- `VALIDATION_ERROR` (400) — невалидный статус
+
 ### POST `/payments/{id}/refund` 🔒
-Возврат средств. Доступен администратору или при отмене заказа.
+Возврат средств. Доступен владельцу заказа. Платёж должен быть в статусе `succeeded`.
 
 **Response 200:**
 ```json
 {
   "id": 1,
   "order_id": 1,
-  "amount": "105000.00",
+  "amount": "105000",
   "currency": "RUB",
   "status": "refunded",
-  "provider": "yookassa",
+  "provider": "mock",
+  "provider_payment_id": "pm-123456",
   "created_at": "2026-07-19T10:00:00Z",
   "updated_at": "2026-07-19T11:00:00Z"
 }
 ```
+
+**Ошибки:**
+- `NOT_FOUND` (404) — платёж не найден
+- `VALIDATION_ERROR` (400) — возврат невозможен (не `succeeded`)

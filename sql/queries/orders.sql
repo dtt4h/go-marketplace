@@ -74,3 +74,6 @@ RETURNING id, store_id, title, price, stock;
 
 -- name: GetProductStoreID :one
 SELECT store_id FROM products WHERE id = $1;
+
+-- name: CountOrderItems :one
+SELECT COUNT(*) FROM order_items WHERE order_id = $1;
