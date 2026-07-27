@@ -19,7 +19,6 @@ export type User = {
 export type AuthResponse = {
   user: User
   access_token: string
-  refresh_token: string
 }
 
 export type APIErrorResponse = {
