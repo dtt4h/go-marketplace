@@ -20,6 +20,13 @@ func NewProductHandler(service ProductService) *ProductHandler {
 	return &ProductHandler{service: service}
 }
 
+// ListCategories godoc
+// @Summary      List product categories
+// @Description  Returns a tree of categories and subcategories
+// @Tags         products
+// @Produce      json
+// @Success      200  {array}  dtos.CategoryResponse
+// @Router       /products/categories [get]
 func (h *ProductHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.ListCategories(r.Context())
 	if err != nil {
@@ -30,6 +37,22 @@ func (h *ProductHandler) ListCategories(w http.ResponseWriter, r *http.Request) 
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// ListProducts godoc
+// @Summary      List products with filters
+// @Description  Returns paginated list of active products
+// @Tags         products
+// @Produce      json
+// @Param        page         query  int     false  "Page number (default 1)"
+// @Param        limit        query  int     false  "Items per page (default 20, max 100)"
+// @Param        store_id     query  int     false  "Filter by store ID"
+// @Param        category_id  query  int     false  "Filter by category ID"
+// @Param        min_price    query  string  false  "Minimum price"
+// @Param        max_price    query  string  false  "Maximum price"
+// @Param        search       query  string  false  "Search by title"
+// @Param        sort         query  string  false  "Sort: price_asc, price_desc, created_desc (default)"
+// @Success      200  {object}  httputil.PaginatedResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Router       /products [get]
 func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	storeID := parseOptionalInt64(r.URL.Query().Get("store_id"))
 	categoryID := parseOptionalInt64(r.URL.Query().Get("category_id"))
@@ -59,6 +82,15 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetProduct godoc
+// @Summary      Get product by ID
+// @Tags         products
+// @Produce      json
+// @Param        id   path  int  true  "Product ID"
+// @Success      200  {object}  dtos.ProductResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /products/{id} [get]
 func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
@@ -80,6 +112,19 @@ func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// CreateProduct godoc
+// @Summary      Create a product
+// @Description  Creates a product with status 'pending' (requires seller role)
+// @Tags         products
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.CreateProductRequest  true  "Product data"
+// @Success      201  {object}  dtos.ProductResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Router       /products [post]
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -110,6 +155,21 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusCreated, resp)
 }
 
+// UpdateProduct godoc
+// @Summary      Update a product
+// @Description  Updates product fields (only store owner)
+// @Tags         products
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id       path  int                         true  "Product ID"
+// @Param        request  body  dtos.UpdateProductRequest   true  "Fields to update"
+// @Success      200  {object}  dtos.ProductResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /products/{id} [patch]
 func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -148,6 +208,17 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// DeleteProduct godoc
+// @Summary      Delete a product
+// @Description  Deletes a product (only store owner)
+// @Tags         products
+// @Security     BearerAuth
+// @Param        id   path  int  true  "Product ID"
+// @Success      204
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /products/{id} [delete]
 func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -177,6 +248,21 @@ func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	httputil.NoContent(w)
 }
 
+// ModerateProduct godoc
+// @Summary      Moderate a product
+// @Description  Approve, reject or archive a product (admin only)
+// @Tags         products
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id       path  int                         true  "Product ID"
+// @Param        request  body  dtos.ModerateProductRequest  true  "Moderation decision"
+// @Success      200  {object}  dtos.ProductResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /products/{id}/moderate [patch]
 func (h *ProductHandler) ModerateProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {

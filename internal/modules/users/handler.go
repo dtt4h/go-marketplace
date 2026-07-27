@@ -17,6 +17,15 @@ func NewUserHandler(service UserService) *UserHandler {
 	return &UserHandler{service: service}
 }
 
+// GetProfile godoc
+// @Summary      Get current user profile
+// @Tags         users
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  dtos.ProfileResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /users/me [get]
 func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -38,6 +47,18 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// UpdateProfile godoc
+// @Summary      Update current user profile
+// @Tags         users
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.UpdateProfileRequest  true  "Profile fields to update"
+// @Success      200  {object}  dtos.ProfileResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Failure      409  {object}  httputil.ErrorResponse
+// @Router       /users/me [patch]
 func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -67,6 +88,19 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// CreateStore godoc
+// @Summary      Register as seller (create store)
+// @Description  Creates a store and upgrades user role to seller
+// @Tags         users
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.CreateStoreRequest  true  "Store data"
+// @Success      201  {object}  dtos.StoreResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      409  {object}  httputil.ErrorResponse
+// @Router       /users/me/store [post]
 func (h *UserHandler) CreateStore(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
