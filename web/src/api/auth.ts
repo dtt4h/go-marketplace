@@ -1,5 +1,10 @@
 import { apiClient } from './client'
-import type { AuthResponse, LoginRequest ,RegisterRequest } from '../types/auth'
+import type {
+  AuthResponse,
+  LoginRequest,
+  RefreshResponse,
+  RegisterRequest,
+} from '../types/auth'
 
 export async function register(
   data: RegisterRequest,): Promise<AuthResponse> {
@@ -20,5 +25,13 @@ export async function login(
 }
 
 export async function logout(): Promise<void> {
-  await apiClient.post(`/auth/logout`)
+  await apiClient.post('/auth/logout')
+}
+
+export async function refreshSession(): Promise<RefreshResponse> {
+  const response = await apiClient.post<RefreshResponse>(
+    '/auth/refresh',
+  )
+
+  return response.data
 }
