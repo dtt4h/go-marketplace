@@ -4,6 +4,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+
+	_ "github.com/dtt4h/go-marketplace/docs"
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/modules/auth"
@@ -20,6 +23,10 @@ func (s *Server) setupRoutes() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	s.router.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	s.router.Route("/api/v1", func(r chi.Router) {
 		s.registerAuthRoutes(r)

@@ -18,6 +18,17 @@ func NewAuthHandler(service AuthService) *AuthHandler {
 	return &AuthHandler{service: service}
 }
 
+// Register godoc
+// @Summary      Register a new user
+// @Description  Creates a buyer account and returns access + refresh tokens
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.RegisterRequest  true  "Registration data"
+// @Success      201  {object}  dtos.AuthResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      409  {object}  httputil.ErrorResponse
+// @Router       /auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req dtos.RegisterRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
@@ -42,6 +53,16 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusCreated, resp)
 }
 
+// Login godoc
+// @Summary      Login
+// @Description  Authenticates user and returns access + refresh tokens
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.LoginRequest  true  "Login credentials"
+// @Success      200  {object}  dtos.AuthResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req dtos.LoginRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
@@ -64,6 +85,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// Refresh godoc
+// @Summary      Refresh tokens
+// @Description  Rotates refresh token from cookie and returns new access token
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  dtos.RefreshResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /auth/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := r.Cookie("refresh_token")
 	if err != nil {
@@ -87,6 +116,14 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// Logout godoc
+// @Summary      Logout
+// @Description  Deletes all refresh tokens for the current user
+// @Tags         auth
+// @Security     BearerAuth
+// @Success      204
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {

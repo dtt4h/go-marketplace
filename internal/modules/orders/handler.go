@@ -20,6 +20,18 @@ func NewOrderHandler(service OrderService) *OrderHandler {
 	return &OrderHandler{service: service}
 }
 
+// CreateOrder godoc
+// @Summary      Create an order
+// @Description  Creates an order from provided items, decrements stock
+// @Tags         orders
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.CreateOrderRequest  true  "Order data"
+// @Success      201  {object}  dtos.OrderResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /orders [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -49,6 +61,18 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusCreated, resp)
 }
 
+// GetOrder godoc
+// @Summary      Get order by ID
+// @Description  Returns order details (buyer or seller of items in order)
+// @Tags         orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path  int  true  "Order ID"
+// @Success      200  {object}  dtos.OrderResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /orders/me/{id} [get]
 func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -78,6 +102,16 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// ListOrdersByUser godoc
+// @Summary      List current user's orders
+// @Tags         orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        page   query  int  false  "Page number (default 1)"
+// @Param        limit  query  int  false  "Items per page (default 20, max 100)"
+// @Success      200  {object}  httputil.PaginatedResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /orders/me [get]
 func (h *OrderHandler) ListOrdersByUser(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -101,6 +135,18 @@ func (h *OrderHandler) ListOrdersByUser(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// ListOrdersBySeller godoc
+// @Summary      List orders for seller's products
+// @Description  Returns orders containing products from seller's store (seller role)
+// @Tags         orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        page   query  int  false  "Page number (default 1)"
+// @Param        limit  query  int  false  "Items per page (default 20, max 100)"
+// @Success      200  {object}  httputil.PaginatedResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Router       /orders/seller [get]
 func (h *OrderHandler) ListOrdersBySeller(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -124,6 +170,21 @@ func (h *OrderHandler) ListOrdersBySeller(w http.ResponseWriter, r *http.Request
 	})
 }
 
+// UpdateOrderStatus godoc
+// @Summary      Update order status
+// @Description  Transitions order status (seller or buyer)
+// @Tags         orders
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id       path  int                            true  "Order ID"
+// @Param        request  body  dtos.UpdateOrderStatusRequest  true  "New status"
+// @Success      200  {object}  dtos.OrderResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /orders/{id}/status [patch]
 func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {

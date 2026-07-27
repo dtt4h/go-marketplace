@@ -1,3 +1,13 @@
+// @title           Go Marketplace API
+// @version         1.0
+// @description     Marketplace backend API for buyers, sellers and admins.
+// @BasePath        /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and the JWT access token.
+
 package main
 
 import (

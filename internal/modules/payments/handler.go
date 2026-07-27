@@ -20,6 +20,20 @@ func NewPaymentHandler(service PaymentService) *PaymentHandler {
 	return &PaymentHandler{service: service}
 }
 
+// CreatePayment godoc
+// @Summary      Create a payment
+// @Description  Initiates a payment for an order (returns confirmation URL)
+// @Tags         payments
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.CreatePaymentRequest  true  "Payment data"
+// @Success      201  {object}  dtos.PaymentResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Failure      409  {object}  httputil.ErrorResponse
+// @Router       /payments [post]
 func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -51,6 +65,16 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusCreated, resp)
 }
 
+// GetPayment godoc
+// @Summary      Get payment by ID
+// @Tags         payments
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path  int  true  "Payment ID"
+// @Success      200  {object}  dtos.PaymentResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /payments/{id} [get]
 func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -78,6 +102,17 @@ func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// Webhook godoc
+// @Summary      Payment provider webhook
+// @Description  Receives payment status updates from provider (no JWT auth)
+// @Tags         payments
+// @Accept       json
+// @Produce      json
+// @Param        request  body  dtos.WebhookRequest  true  "Webhook payload"
+// @Success      200  {object}  map[string]string
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /payments/webhook [post]
 func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	var req dtos.WebhookRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
@@ -100,6 +135,18 @@ func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// RefundPayment godoc
+// @Summary      Refund a payment
+// @Description  Refunds a succeeded payment (order owner only)
+// @Tags         payments
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path  int  true  "Payment ID"
+// @Success      200  {object}  dtos.PaymentResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /payments/{id}/refund [post]
 func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
