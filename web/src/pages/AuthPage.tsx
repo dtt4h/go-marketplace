@@ -1,9 +1,9 @@
-import { LoginForm } from '../components/LoginForm'
-import { LogoutButton } from '../components/LogoutButton'
-import { useAuthStore } from '../store/authStore'
-import { RegisterForm } from '../components/RegisterForm'
-
 import { useState } from 'react'
+
+import { LoginForm } from '../features/auth/components/LoginForm'
+import { LogoutButton } from '../features/auth/components/LogoutButton'
+import { RegisterForm } from '../features/auth/components/RegisterForm'
+import { useAuthStore } from '../features/auth/store/authStore'
 
 import cls from './AuthPage.module.scss'
 

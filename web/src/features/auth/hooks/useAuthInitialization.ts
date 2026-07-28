@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
 import { refreshSession } from '../api/auth'
-import { getCurrentUser } from '../api/users'
+import { getCurrentUser } from '../../profile/api/users'
 import { useAuthStore } from '../store/authStore'
 
 let initializationPromise: Promise<void> | null = null
