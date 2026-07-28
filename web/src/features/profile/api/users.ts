@@ -1,5 +1,5 @@
-import { apiClient } from './client'
-import type { UserProfile } from '../types/auth'
+import { apiClient } from '../../../shared/api/client'
+import type { UserProfile } from '../types'
 
 export async function getCurrentUser(
   accessToken?: string,

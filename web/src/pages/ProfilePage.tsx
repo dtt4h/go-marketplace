@@ -1,5 +1,5 @@
-import { useAuthStore } from '../store/authStore';
-import { LogoutButton } from '../components/LogoutButton';
+import { LogoutButton } from '../features/auth/components/LogoutButton'
+import { useAuthStore } from '../features/auth/store/authStore'
 
 export function ProfilePage() {
   const user = useAuthStore((state) => state.user)

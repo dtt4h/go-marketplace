@@ -1,10 +1,10 @@
-import { apiClient } from './client'
+import { apiClient } from '../../../shared/api/client'
 import type {
   AuthResponse,
   LoginRequest,
   RefreshResponse,
   RegisterRequest,
-} from '../types/auth'
+} from '../types'
 
 export async function register(
   data: RegisterRequest,): Promise<AuthResponse> {

@@ -7,8 +7,8 @@ import { z } from 'zod'
 import cls from './LoginForm.module.scss'
 
 import { login as loginUser } from '../api/auth'
-import type { APIErrorResponse } from '../types/auth'
 import { useAuthStore } from '../store/authStore'
+import type { APIErrorResponse } from '../types'
 
 const loginSchema = z.object({
   email: z

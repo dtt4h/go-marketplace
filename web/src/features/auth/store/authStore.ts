@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import type { User } from '../types/auth'
+import type { User } from '../types'
 
 type AuthState = {
   user: User | null
