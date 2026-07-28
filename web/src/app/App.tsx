@@ -1,9 +1,13 @@
 import { Route, Routes } from 'react-router-dom'
 
 import { useAuthInitialization } from '../features/auth/hooks/useAuthInitialization'
+import { ProtectedRoute } from './router/ProtectedRoute'
+import { GuestRoute } from './router/GuestRoute'
 import { useAuthStore } from '../features/auth/store/authStore'
 import { AuthPage } from '../pages/AuthPage'
 import { ProfilePage } from '../pages/ProfilePage'
+import { CatalogPage } from '../pages/CatalogPage'
+import { NotFoundPage } from '../pages/NotFoundPage'
 
 function App() {
   useAuthInitialization()
@@ -18,8 +22,24 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/auth" element={<AuthPage />} />
-      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/" element={<CatalogPage />} />
+      <Route 
+        path="/auth" 
+        element={
+          <GuestRoute>
+            <AuthPage />
+          </GuestRoute>
+        } 
+      />
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }
