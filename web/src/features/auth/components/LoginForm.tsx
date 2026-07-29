@@ -8,7 +8,7 @@ import cls from './LoginForm.module.scss'
 
 import { login as loginUser } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
-import type { APIErrorResponse } from '../types'
+import type { APIErrorResponse } from '../../../shared/api/types'
 
 const loginSchema = z.object({
   email: z

@@ -8,9 +8,6 @@ export const updateProfileSchema = z.object({
   phone: z
     .string()
     .trim(),
-  avatar_url: z
-    .string()
-    .trim(),
 })
 
 export type UpdateProfileFormData =

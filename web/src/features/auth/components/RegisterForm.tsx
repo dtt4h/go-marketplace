@@ -8,7 +8,7 @@ import cls from './RegisterForm.module.scss'
 
 import { register as registerUser} from '../api/auth'
 import { useAuthStore } from '../store/authStore'
-import type { APIErrorResponse } from '../types'
+import type { APIErrorResponse } from '../../../shared/api/types'
 
 const registerSchema = z.object({
   username: z.string().trim().min(1, 'Введите имя пользователя'),
