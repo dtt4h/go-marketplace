@@ -9,5 +9,4 @@ export type UserProfile = User & {
 export type UpdateProfileRequest = {
   username?: string
   phone?: string
-  avatar_url?: string
 }

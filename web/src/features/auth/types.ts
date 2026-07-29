@@ -21,14 +21,6 @@ export type AuthResponse = {
   access_token: string
 }
 
-export type APIErrorResponse = {
-  error: {
-    code: string
-    message: string
-    details?: Record<string, unknown>
-  }
-}
-
 export type RefreshResponse = {
   access_token: string
 }

@@ -6,9 +6,11 @@ type AuthState = {
   user: User | null
   accessToken: string | null
   isInitialized: boolean
-  
+
   setSession: (user: User, accessToken: string) => void
   clearSession: () => void
+
+  updateUser: (user: User) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -29,6 +31,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       user: null,
       accessToken: null,
       isInitialized: true,
+    })
+  },
+
+  updateUser: (user) => {
+    set({
+      user,
     })
   },
 }))
