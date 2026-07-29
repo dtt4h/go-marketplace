@@ -1,13 +1,29 @@
 import { LogoutButton } from '../features/auth/components/LogoutButton'
-import { useAuthStore } from '../features/auth/store/authStore'
+import { useProfile } from '../features/profile/hooks/useProfile'
+import { ProfileForm } from '../features/profile/components/ProfileForm'
 
 export function ProfilePage() {
-  const user = useAuthStore((state) => state.user)
+  const {
+    profile,
+    isLoading,
+    error,
+    replaceProfile,
+  } = useProfile()
+  if (isLoading) {
+    return <p role="status">Загрузка профиля</p>
+  }
+  if (error) {
+    return <p role="status">{error}</p>
+  }
+  if (!profile) {
+    return <p role="alert">Профиль не найден</p>
+  }
   return (
     <main>
-      <h1>Профиль</h1>
-      <p>Имя пользователя: {user?.username}</p>
-      <p>Email: {user?.email}</p>
+      <ProfileForm
+        profile={profile}
+        onUpdated={replaceProfile}
+      />
       <LogoutButton />
     </main>
   )
