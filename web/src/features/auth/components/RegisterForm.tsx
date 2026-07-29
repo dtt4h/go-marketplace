@@ -80,10 +80,28 @@ export function RegisterForm() {
       const apiError = error.response.data?.error
 
       if (apiError?.code === 'CONFLICT') {
-        setError('email', {
-          type: 'server',
-          message: 'Пользователь с таким email уже существует',
-        })
+        const conflictField = apiError.details?.field
+
+        if (conflictField === 'username'){ 
+          setError('username', {
+            type: 'server',
+            message: 'Это имя пользователя уже занято',
+          })
+          return
+        }
+
+        if (conflictField === 'email') {
+          setError('email', {
+            type: 'server',
+            message: 'Пользователь с таким email уже существует',
+          })
+        return
+        }
+
+        setServerError(
+          apiError.message
+            ?? 'Email или имя пользователя уже заняты',
+        )
         return
       }
 
