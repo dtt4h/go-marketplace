@@ -17,6 +17,14 @@ func IsUniqueViolation(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "23505")
 }
 
+func UniqueViolationConstraint(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return pgErr.ConstraintName
+	}
+	return ""
+}
+
 func IsNoRows(err error) bool {
 	return errors.Is(err, pgx.ErrNoRows)
 }
