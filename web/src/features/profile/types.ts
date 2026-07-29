@@ -5,3 +5,9 @@ export type UserProfile = User & {
   phone: string | null
   created_at: string
 }
+
+export type UpdateProfileRequest = {
+  username?: string
+  phone?: string
+  avatar_url?: string
+}
