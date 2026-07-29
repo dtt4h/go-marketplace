@@ -42,7 +42,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrWeakPassword):
 			httputil.ValidationError(w, err.Error(), nil)
 		case errors.Is(err, ErrEmailTaken):
-			httputil.Conflict(w, err.Error())
+			httputil.ErrorWithDetails(w, http.StatusConflict, "CONFLICT", err.Error(), map[string]string{"field": "email"})
+		case errors.Is(err, ErrUsernameTaken):
+			httputil.ErrorWithDetails(w, http.StatusConflict, "CONFLICT", err.Error(), map[string]string{"field": "username"})
 		default:
 			httputil.InternalError(w, err.Error())
 		}

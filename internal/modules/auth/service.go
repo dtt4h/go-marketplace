@@ -19,6 +19,7 @@ import (
 
 var (
 	ErrEmailTaken          = errors.New("email already taken")
+	ErrUsernameTaken       = errors.New("username already taken")
 	ErrInvalidCredentials  = errors.New("invalid email or password")
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 	ErrRefreshTokenExpired = errors.New("refresh token expired")
@@ -62,7 +63,12 @@ func (s *authService) Register(ctx context.Context, req dtos.RegisterRequest) (d
 	user, err := s.repo.CreateUser(ctx, req.Email, string(hashedPassword), role, req.Username)
 	if err != nil {
 		if pgutil.IsUniqueViolation(err) {
-			return dtos.AuthResponse{}, ErrEmailTaken
+			switch pgutil.UniqueViolationConstraint(err) {
+			case "users_username_key":
+				return dtos.AuthResponse{}, ErrUsernameTaken
+			default:
+				return dtos.AuthResponse{}, ErrEmailTaken
+			}
 		}
 		return dtos.AuthResponse{}, fmt.Errorf("create user: %w", err)
 	}
