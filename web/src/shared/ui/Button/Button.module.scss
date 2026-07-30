@@ -1,0 +1,31 @@
+@use '../../../shared/styles/global.scss' as *;
+
+.button {
+  margin-top: 52px;
+  border-radius: 10px;
+  width: 362px;
+  height: 48px;
+  font-family: $inter;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  transition: opacity 0.2s ease;
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  &:not(:disabled):hover {
+    opacity: 0.8;
+  }
+}
+
+.primary {
+  background-color: $azure52;
+  color: white;
+}
+
+.secondary {
+  border: 1px solid $azure84;
+  background-color: white;
+  color: $azure27;
+}
