@@ -1,31 +1,51 @@
-@use '../../../shared/styles/global.scss' as *;
+@use '../../styles/global.scss' as *;
 
-.inputContainer{
+.inputContainer {
   padding-bottom: 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
   font-family: $inter;
-  font-weight: 600px;
-  .inputLabel{
+  font-weight: 600;
+
+  .inputLabel {
     font-size: 13px;
   }
-  .inputClassName{
-    font-size: 14px;
-    color: $azure12;
+
+  .inputClassName {
     border: 1px solid $azure84;
     border-radius: 9px;
     padding: 12px 13px;
-    width: 362px;
+    width: 100%;
     height: 45px;
+    background-color: white;
+    color: $azure12;
+    font-family: $inter;
+    font-size: 14px;
+
     &::placeholder {
       color: $grey462;
       font-size: 14px;
     }
+
+    &:focus-visible {
+      outline: 2px solid $azure52;
+      outline-offset: 2px;
+    }
+
+    &[readonly] {
+      background-color: $grey953;
+      cursor: text;
+    }
+
+    &[aria-invalid='true'] {
+      border-color: $danger;
+    }
   }
 }
 
-.error{
+.error {
   color: $danger;
   font-family: $inter;
   font-size: 12px;

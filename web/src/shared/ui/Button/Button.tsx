@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+
 import cls from './Button.module.scss'
 
 type ButtonProps = ComponentProps<'button'> & {
@@ -12,13 +13,13 @@ export function Button({
   ...buttonProps
 }: ButtonProps) {
   return (
-    <button 
+    <button
       {...buttonProps}
-      className={`
-        ${cls.button}
-        ${cls[variant]}
-        ${className ?? ''}
-      `}
+      className={[
+        cls.button,
+        cls[variant],
+        className,
+      ].filter(Boolean).join(' ')}
     >
       {children}
     </button>

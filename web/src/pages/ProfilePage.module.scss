@@ -4,26 +4,41 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 }
-
 
 .profileHeader {
   display: flex;
-  flex-direction: row;
   justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.identityContainer,
+.actionContainer {
+  display: flex;
   align-items: center;
   gap: 16px;
 }
 
 .avatarContainer {
   display: flex;
+  flex: 0 0 60px;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   border-radius: 14px;
   width: 60px;
   height: 60px;
   background-color: $azure12;
-  .avatarMok{
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatarMok {
     font-family: $inter;
     font-weight: 700;
     font-size: 26px;
@@ -34,15 +49,16 @@
 .nameContainer {
   display: flex;
   flex-direction: column;
+
   .profileName {
     font-family: $inter;
     font-weight: 700;
     font-size: 26px;
     color: $azure12;
   }
+
   .profileDesc {
     display: flex;
-    flex-direction: row;
     font-family: $inter;
     font-weight: 400;
     font-size: 13px;
@@ -51,6 +67,7 @@
   }
 }
 
-.editButton{
+.editButton {
+  text-align: center;
   width: 150px;
 }

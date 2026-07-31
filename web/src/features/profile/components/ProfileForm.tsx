@@ -3,15 +3,17 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import axios from 'axios'
 
-import cls from './ProfileForm.module.scss'
-
-import { updateProfileSchema, type UpdateProfileFormData } from '../schemas/updateProfileSchema'
-import type { UserProfile } from '../types'
-import { updateCurrentUser } from '../api/users'
 import type { APIErrorResponse } from '../../../shared/api/types'
-
-import { Input } from '../../../shared/ui/Input/Input'
 import { Button } from '../../../shared/ui/Button/Button'
+import { Input } from '../../../shared/ui/Input/Input'
+import { updateCurrentUser } from '../api/users'
+import {
+  updateProfileSchema,
+  type UpdateProfileFormData,
+} from '../schemas/updateProfileSchema'
+import type { UserProfile } from '../types'
+
+import cls from './ProfileForm.module.scss'
 
 type ProfileFormProps = {
   profile: UserProfile
@@ -45,6 +47,7 @@ export function ProfileForm({
       phone: profile.phone ?? '',
     },
   })
+
   function handleCancel(): void {
     reset({
       username: profile.username,
@@ -54,6 +57,7 @@ export function ProfileForm({
     setServerError(null)
     onCancel()
   }
+
   async function onSubmit(
     data: UpdateProfileFormData,
   ) {
@@ -61,10 +65,11 @@ export function ProfileForm({
       return
     }
     setServerError(null)
+
     try {
-      const updatedProfile = 
+      const updatedProfile =
         await updateCurrentUser(data)
-      
+
       reset({
         username: updatedProfile.username,
         phone: updatedProfile.phone ?? '',
@@ -98,12 +103,16 @@ export function ProfileForm({
   }
 
   return (
-    <form className={cls.formContainer} onSubmit={handleSubmit(onSubmit)} noValidate>
+    <form
+      className={cls.formContainer}
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+    >
       <Input
         id="profile-username"
         type="text"
         label="Имя"
-        readOnly = {!isEditing}
+        readOnly={!isEditing}
         error={errors.username?.message}
         {...register('username')}
       />
@@ -116,30 +125,33 @@ export function ProfileForm({
         {...register('phone')}
       />
       {serverError && (
-        <p role="alert">{serverError}</p>
+        <p
+          className={cls.serverAlert}
+          role="alert"
+        >
+          {serverError}
+        </p>
       )}
       {isEditing && (
-        <>
-          <div className={cls.buttonContainer}>
-            <Button
-              type="submit"
-              disabled={isSubmitting || !isDirty}
-              variant="primary"
-              className={cls.saveButton}
-            >
+        <div className={cls.buttonContainer}>
+          <Button
+            type="submit"
+            disabled={isSubmitting || !isDirty}
+            variant="primary"
+            className={cls.saveButton}
+          >
             {isSubmitting ? 'Сохраняем...' : 'Сохранить'}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCancel}
-              disabled={isSubmitting}
-              variant="secondary"
-              className={cls.cancelButton}
-            >
-              Отменить
-            </Button>
-          </div>
-        </>
+          </Button>
+          <Button
+            type="button"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+            variant="secondary"
+            className={cls.cancelButton}
+          >
+            Отменить
+          </Button>
+        </div>
       )}
     </form>
   )
