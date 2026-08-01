@@ -3,6 +3,8 @@ import axios from 'axios'
 
 import { logout as logoutUser } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
+import { Logout } from '../../../shared/assets/icons/Logout'
+import cls from './LogoutButton.module.scss'
 
 export function LogoutButton() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -38,13 +40,13 @@ export function LogoutButton() {
   return (
     <div>
       {logoutError && <p role="alert">{logoutError}</p>}
-
       <button
+        className={cls.logoutButton}
         type="button"
         onClick={handleLogout}
         disabled={isLoggingOut}
       >
-        {isLoggingOut ? 'Выход...' : 'Выйти'}
+        {isLoggingOut ? 'Выход...' : <Logout/>}
       </button>
     </div>
   )
