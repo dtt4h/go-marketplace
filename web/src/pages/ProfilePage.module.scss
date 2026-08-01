@@ -3,7 +3,8 @@
 .wrapper {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 24px;
+  min-width: 600px;
   width: 100%;
 }
 
@@ -71,3 +72,29 @@
   text-align: center;
   width: 150px;
 }
+
+.navContainer {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 6px;
+  border-bottom: 1px solid $grey91;
+}
+
+.navButton {
+  font-family: $inter;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  color: $azure65;
+  &[aria-pressed='true'] {
+    border-bottom: 2px solid $azure52;
+    padding-bottom: 12px;
+    color: $azure12;
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+

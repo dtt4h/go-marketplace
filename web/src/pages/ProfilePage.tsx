@@ -6,12 +6,16 @@ import { ProfileForm } from '../features/profile/components/ProfileForm'
 import { useProfile } from '../features/profile/hooks/useProfile'
 import type { UserProfile } from '../features/profile/types'
 import { Button } from '../shared/ui/Button/Button'
+import { OrdersPlaceholder } from '../features/orders/components/OrdersPlaceholder'
 
 import cls from './ProfilePage.module.scss'
+
+type ProfileSection = 'profile' | 'orders'
 
 export function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [activeSection, setActiveSection] = useState<ProfileSection>('profile')
 
   const updateAuthUser = useAuthStore(
     (state) => state.updateUser,
@@ -77,31 +81,48 @@ export function ProfilePage() {
           </div>
         </div>
         <div className={cls.actionContainer}>
-          {!isEditing && (
-            <Button
-              className={cls.editButton}
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setSuccessMessage(null)
-                setIsEditing(true)
-              }}
-            >
-              Редактировать
-            </Button>
-          )}
           <LogoutButton />
         </div>
       </div>
+      <nav className={cls.navContainer} aria-label="Разделы личного кабинета">
+          <button
+            className={cls.navButton}
+            type="button"
+            aria-pressed={activeSection === 'orders'}
+            disabled={isEditing}
+            onClick={() => {
+              setSuccessMessage(null)
+              setActiveSection('orders')
+            }}
+          >
+            Мои заказы
+          </button>
+          <button
+            className={cls.navButton}
+            type="button"
+            aria-pressed={activeSection === 'profile'}
+            onClick={() => setActiveSection('profile')}
+          >
+            Профиль
+          </button>
+        </nav>
       {successMessage && (
         <p role="status">{successMessage}</p>
       )}
-      <ProfileForm
+      {activeSection === 'profile' ? (
+        <ProfileForm
         isEditing={isEditing}
         profile={profile}
+        onEdit={() => {
+          setSuccessMessage(null)
+          setIsEditing(true)
+        }}
         onUpdated={handleProfileUpdated}
         onCancel={() => setIsEditing(false)}
       />
+      ) : (
+        <OrdersPlaceholder />
+      )}
     </main>
   )
 }

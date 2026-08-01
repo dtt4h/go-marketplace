@@ -18,6 +18,7 @@ import cls from './ProfileForm.module.scss'
 type ProfileFormProps = {
   profile: UserProfile
   isEditing: boolean
+  onEdit: () => void
   onUpdated: (profile: UserProfile) => void
   onCancel: () => void
 }
@@ -25,6 +26,7 @@ type ProfileFormProps = {
 export function ProfileForm({
   profile,
   isEditing,
+  onEdit,
   onUpdated,
   onCancel,
 }: ProfileFormProps) {
@@ -108,6 +110,7 @@ export function ProfileForm({
       onSubmit={handleSubmit(onSubmit)}
       noValidate
     >
+      <p className={cls.profileLabel}>Данные профиля</p>
       <Input
         id="profile-username"
         type="text"
@@ -132,7 +135,7 @@ export function ProfileForm({
           {serverError}
         </p>
       )}
-      {isEditing && (
+      {isEditing ? (
         <div className={cls.buttonContainer}>
           <Button
             type="submit"
@@ -152,6 +155,17 @@ export function ProfileForm({
             Отменить
           </Button>
         </div>
+      ) : (
+        <Button
+          className={cls.editButton}
+          type="button"
+          variant="secondary"
+          onClick={onEdit}
+          aira-label="Редактировать профиль"
+          title="Редактировать профиль"
+        >
+          Редактировать
+        </Button>
       )}
     </form>
   )
