@@ -161,7 +161,7 @@ export function ProfileForm({
           type="button"
           variant="secondary"
           onClick={onEdit}
-          aira-label="Редактировать профиль"
+          aria-label="Редактировать профиль"
           title="Редактировать профиль"
         >
           Редактировать

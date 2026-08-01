@@ -80,7 +80,7 @@ export function ProfilePage() {
           </div>
         </div>
         <div className={cls.actionContainer}>
-          <LogoutButton />
+          <LogoutButton/>
         </div>
       </div>
       <nav className={cls.navContainer} aria-label="Разделы личного кабинета">
