@@ -31,7 +31,7 @@ export function LogoutButton() {
         return
       }
 
-      setLogoutError('Не удалось выполнить вход')
+      setLogoutError('Не удалось выйти из аккаунта')
     } finally {
       setIsLoggingOut(false)
     }
@@ -45,8 +45,17 @@ export function LogoutButton() {
         type="button"
         onClick={handleLogout}
         disabled={isLoggingOut}
+        aria-label={
+          isLoggingOut
+            ? 'Выполняется выход'
+            : 'Выйти из аккаунта'
+        }
+        title="Выйти из аккаунта"
       >
-        {isLoggingOut ? 'Выход...' : <Logout/>}
+        {isLoggingOut ? 'Выход...' : <Logout
+            aria-hidden="true"
+            focusable="false"
+        />}
       </button>
     </div>
   )
