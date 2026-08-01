@@ -5,7 +5,6 @@ import { useAuthStore } from '../features/auth/store/authStore'
 import { ProfileForm } from '../features/profile/components/ProfileForm'
 import { useProfile } from '../features/profile/hooks/useProfile'
 import type { UserProfile } from '../features/profile/types'
-import { Button } from '../shared/ui/Button/Button'
 import { OrdersPlaceholder } from '../features/orders/components/OrdersPlaceholder'
 
 import cls from './ProfilePage.module.scss'
