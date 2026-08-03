@@ -39,6 +39,10 @@ function App() {
           </ProtectedRoute>
         } 
       />
+      <Route
+        path="/catalog"
+        element = {<CatalogPage />}
+      />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
