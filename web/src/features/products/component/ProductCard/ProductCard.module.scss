@@ -1,0 +1,69 @@
+@use '../../../../shared/styles/global.scss' as *;
+
+.mainContainer {
+  display: flex;
+  flex-direction: column;
+  width: 273px;
+  height: 373px;
+  border: 1px solid $grey91;
+  border-radius: 12px;
+  background-color: white;
+}
+
+.imgCardContainer{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 203px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 11px 11px 0 0;
+  .imgCard {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.descContainer{
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 14px;
+  margin-left: 14px;
+  .categoryContainer {
+    font-family: $inter;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: $azure52;
+  }
+  .titleContainer{
+    font-family: $inter;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 135%;
+    color: $azure16;
+  }
+  .storeContainer{
+    font-family: $inter;
+    font-weight: 400px;
+    font-size: 12px;
+    color: $grey46;
+  }
+}
+
+.priceContainer{
+  display: flex;
+  flex-direction: row;
+  padding-left: 14px;
+  padding-top: 35px;
+  font-family: $inter;
+  font-weight: 700;
+  font-size: 19px;
+  color: $azure12;
+}

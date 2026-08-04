@@ -1,4 +1,7 @@
 import type { ProductListItem } from "../../type"
+import cls from './ProductCard.module.scss'
+
+import { NoImage } from "../../../../shared/assets/icons/NoImage"
 
 type ProductCardProps = {
   product: ProductListItem
@@ -10,29 +13,28 @@ export function ProductCard({
   const previewImage = product.images?.[0]
 
   return (
-    <article>
+    <article className={cls.mainContainer}>
       {previewImage ? (
-        <img
-          src={previewImage.url}
-          alt={product.title}
-        />
+        <div className={cls.imgCardContainer}>
+          <img
+            className={cls.imgCard}
+            src={previewImage.url}
+            alt={product.title}
+          />
+        </div>
       ) : (
-        <div>Нет изображения</div>
+        <div className={cls.imgCardContainer}>
+          <NoImage className={cls.noImage}/>
+        </div>
       )}
-
-      <h2>{product.title}</h2>
-      
-      <p>{product.price} ₽</p>
-
-      <p>
-        {product.store?.name ?? 'Магазин не указан'}
-      </p>
-
-      {product.stock > 0 ? (
-        <span>В наличии</span>
-      ) : (
-        <span>Нет в наличии</span>
-      )}
+      <div className={cls.descContainer}>
+        <p className={cls.categoryContainer}>{product.category?.name}</p>
+        <h2 className={cls.titleContainer}>{product.title}</h2>
+        <p className={cls.storeContainer}>
+          {product.store?.name ?? 'Магазин не указан'}
+        </p>
+      </div>
+      <p className={cls.priceContainer}>{product.price} ₽</p>
     </article>
   )
 }
