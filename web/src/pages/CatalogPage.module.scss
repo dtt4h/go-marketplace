@@ -1,0 +1,16 @@
+@use '../shared/styles/global.scss' as *;
+
+.wrapperCatalog {
+  display: flex;
+  flex-direction: column;
+  max-width: 1200px;
+}
+
+.cardsContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
