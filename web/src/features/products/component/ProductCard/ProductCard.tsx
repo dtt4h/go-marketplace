@@ -1,7 +1,7 @@
-import type { ProductListItem } from "../../type"
+import type { ProductListItem } from '../../type'
 import cls from './ProductCard.module.scss'
-
-import { NoImage } from "../../../../shared/assets/icons/NoImage"
+import { Link } from 'react-router-dom'
+import { NoImage } from '../../../../shared/assets/icons/NoImage'
 
 type ProductCardProps = {
   product: ProductListItem
@@ -13,28 +13,34 @@ export function ProductCard({
   const previewImage = product.images?.[0]
 
   return (
-    <article className={cls.mainContainer}>
-      {previewImage ? (
-        <div className={cls.imgCardContainer}>
-          <img
-            className={cls.imgCard}
-            src={previewImage.url}
-            alt={product.title}
-          />
+    <Link
+      className={cls.cardLink}
+      to={`/products/${product.id}`}
+      aria-label={`Открыть товар ${product.title}`}
+    >
+      <article className={cls.mainContainer}>
+        {previewImage ? (
+          <div className={cls.imgCardContainer}>
+            <img
+              className={cls.imgCard}
+              src={previewImage.url}
+              alt={product.title}
+            />
+          </div>
+        ) : (
+          <div className={cls.imgCardContainer}>
+            <NoImage className={cls.noImage}/>
+          </div>
+        )}
+        <div className={cls.descContainer}>
+          <p className={cls.categoryContainer}>{product.category?.name}</p>
+          <h2 className={cls.titleContainer}>{product.title}</h2>
+          <p className={cls.storeContainer}>
+            {product.store?.name ?? 'Магазин не указан'}
+          </p>
         </div>
-      ) : (
-        <div className={cls.imgCardContainer}>
-          <NoImage className={cls.noImage}/>
-        </div>
-      )}
-      <div className={cls.descContainer}>
-        <p className={cls.categoryContainer}>{product.category?.name}</p>
-        <h2 className={cls.titleContainer}>{product.title}</h2>
-        <p className={cls.storeContainer}>
-          {product.store?.name ?? 'Магазин не указан'}
-        </p>
-      </div>
-      <p className={cls.priceContainer}>{product.price} ₽</p>
-    </article>
+        <p className={cls.priceContainer}>{product.price} ₽</p>
+      </article>
+    </Link>
   )
 }

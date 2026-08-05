@@ -51,3 +51,17 @@ export type ProductListResponse = {
   page: number
   limit: number
 }
+
+export type ProductDetails = {
+  id: number
+  title: string
+  description?: string
+  price: string
+  stock: number
+  status: string
+  images?: ProductImage[]
+  store?: ProductStore
+  category?: ProductCategory
+  created_at: string
+  updated_at: string
+}
