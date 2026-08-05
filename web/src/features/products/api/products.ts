@@ -1,5 +1,5 @@
 import { apiClient } from "../../../shared/api/client"
-import type { ProductListParams, ProductListResponse } from "../type"
+import type { ProductDetails, ProductListParams, ProductListResponse } from "../type"
 
 export async function getProducts(
   params: ProductListParams = {},
@@ -7,6 +7,16 @@ export async function getProducts(
   const response = await apiClient.get<ProductListResponse>(
     '/products',
     { params },
+  )
+
+  return response.data
+}
+
+export async function getProductById(
+  productId: string,
+): Promise<ProductDetails> {
+  const response = await apiClient.get<ProductDetails>(
+    `/products/${productId}`,
   )
 
   return response.data

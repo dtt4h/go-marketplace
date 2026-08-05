@@ -7,10 +7,7 @@
 }
 
 .cardsContainer {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: repeat(4, 273px);
   gap: 20px;
 }

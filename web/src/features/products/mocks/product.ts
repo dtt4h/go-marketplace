@@ -1,176 +1,103 @@
-import type { ProductListItem } from '../type'
+import type {
+  ProductCategory,
+  ProductListItem,
+  ProductStore,
+} from '../type'
 
-export const mockProducts: ProductListItem[] = [
-  {
-    id: 1,
-    title: 'Керамическая настольная лампа',
-    price: '24500',
-    stock: 4,
-    images: [
-      {
-        id: 1,
-        url: 'https://picsum.photos/seed/lamp/600/600',
-        position: 0,
-      },
-    ],
-    store: {
-      id: 1,
-      name: 'Дом и свет',
-    },
-    category: {
-      id: 1,
-      name: 'Освещение',
-      slug: 'lighting',
-    },
-    created_at: '2026-08-03T12:00:00Z',
-  },
-  {
-    id: 2,
-    title: 'Наручные часы',
-    price: '78000',
-    stock: 2,
-    images: [
-      {
-        id: 2,
-        url: 'https://picsum.photos/seed/watch/600/600',
-        position: 0,
-      },
-    ],
-    store: {
-      id: 2,
-      name: 'Время',
-    },
-    category: {
-      id: 2,
-      name: 'Аксессуары',
-      slug: 'accessories',
-    },
-    created_at: '2026-08-02T12:00:00Z',
-  },
-  {
-    id: 3,
-    title: 'Товар без изображения',
-    price: '12500',
-    stock: 0,
-    store: {
-      id: 3,
-      name: 'Тестовый магазин',
-    },
-    created_at: '2026-08-01T12:00:00Z',
-  },
-  {
-    id: 1,
-    title: 'Керамическая настольная лампа',
-    price: '24500',
-    stock: 4,
-    images: [
-      {
-        id: 1,
-        url: 'https://picsum.photos/seed/lamp/600/600',
-        position: 0,
-      },
-    ],
-    store: {
-      id: 1,
-      name: 'Дом и свет',
-    },
-    category: {
-      id: 1,
-      name: 'Освещение',
-      slug: 'lighting',
-    },
-    created_at: '2026-08-03T12:00:00Z',
-  },
-  {
-    id: 1,
-    title: 'Керамическая настольная лампа',
-    price: '24500',
-    stock: 4,
-    images: [
-      {
-        id: 1,
-        url: 'https://picsum.photos/seed/lamp/600/600',
-        position: 0,
-      },
-    ],
-    store: {
-      id: 1,
-      name: 'Дом и свет',
-    },
-    category: {
-      id: 1,
-      name: 'Освещение',
-      slug: 'lighting',
-    },
-    created_at: '2026-08-03T12:00:00Z',
-  },
-  {
-    id: 1,
-    title: 'Керамическая настольная лампа',
-    price: '24500',
-    stock: 4,
-    images: [
-      {
-        id: 1,
-        url: 'https://picsum.photos/seed/lamp/600/600',
-        position: 0,
-      },
-    ],
-    store: {
-      id: 1,
-      name: 'Дом и свет',
-    },
-    category: {
-      id: 1,
-      name: 'Освещение',
-      slug: 'lighting',
-    },
-    created_at: '2026-08-03T12:00:00Z',
-  },
-  {
-    id: 1,
-    title: 'Керамическая настольная лампа',
-    price: '24500',
-    stock: 4,
-    images: [
-      {
-        id: 1,
-        url: 'https://picsum.photos/seed/lamp/600/600',
-        position: 0,
-      },
-    ],
-    store: {
-      id: 1,
-      name: 'Дом и свет',
-    },
-    category: {
-      id: 1,
-      name: 'Освещение',
-      slug: 'lighting',
-    },
-    created_at: '2026-08-03T12:00:00Z',
-  },
-  {
-    id: 1,
-    title: 'Керамическая настольная лампа',
-    price: '24500',
-    stock: 4,
-    images: [
-      {
-        id: 1,
-        url: 'https://picsum.photos/seed/lamp/600/600',
-        position: 0,
-      },
-    ],
-    store: {
-      id: 1,
-      name: 'Дом и свет',
-    },
-    category: {
-      id: 1,
-      name: 'Освещение',
-      slug: 'lighting',
-    },
-    created_at: '2026-08-03T12:00:00Z',
-  },
+const productTitles = [
+  'Керамическая настольная лампа',
+  'Наручные часы «Север»',
+  'Дубовый журнальный столик',
+  'Кожаный городской рюкзак',
+  'Фарфоровый чайный сервиз',
+  'Шерстяной плед',
+  'Настенная полка из ясеня',
+  'Льняная скатерть',
+  'Механическая клавиатура',
+  'Беспроводные наушники',
+  'Стеклянная ваза',
+  'Кресло с мягкой обивкой',
+  'Набор кухонных ножей',
+  'Портативная колонка',
+  'Настольные часы',
+  'Хлопковое покрывало',
+  'Кофейная пара ручной работы',
+  'Торшер с тканевым абажуром',
+  'Органайзер для рабочего стола',
+  'Кожаный ремень',
+  'Декоративная подушка',
+  'Электрическая кофемолка',
+  'Деревянная разделочная доска',
+  'Складной зонт',
+  'Керамическое кашпо',
+  'Настольное зеркало',
+  'Набор ароматических свечей',
+  'Плетёная корзина для хранения',
+  'Домашний халат',
+  'Подставка для ноутбука',
+  'Ночник с тёплым светом',
+  'Френч-пресс из стекла',
+  'Комплект махровых полотенец',
+  'Минималистичный кошелёк',
+  'Блокнот в тканевой обложке',
+  'Чехол для планшета',
+  'Ручная соковыжималка',
+  'Набор бокалов',
+  'Деревянная ключница',
+  'Настольная игра для компании',
+  'Плед крупной вязки',
+  'Керамическая сахарница',
+  'Поднос из натурального дерева',
+  'Компактный увлажнитель воздуха',
+  'Набор контейнеров для хранения',
+  'Сумка через плечо',
+  'Настенный календарь',
+  'Подсвечник из латуни',
+  'Вязаная шапка',
+  'Столик для завтрака',
 ]
+
+const categories: ProductCategory[] = [
+  { id: 1, name: 'Освещение', slug: 'lighting' },
+  { id: 2, name: 'Аксессуары', slug: 'accessories' },
+  { id: 3, name: 'Мебель', slug: 'furniture' },
+  { id: 4, name: 'Посуда', slug: 'tableware' },
+  { id: 5, name: 'Текстиль', slug: 'textile' },
+  { id: 6, name: 'Электроника', slug: 'electronics' },
+]
+
+const stores: ProductStore[] = [
+  { id: 1, name: 'Дом и свет' },
+  { id: 2, name: 'Тихие вещи' },
+  { id: 3, name: 'Мастерская формы' },
+  { id: 4, name: 'Повседневность' },
+  { id: 5, name: 'Уютный угол' },
+]
+
+export const mockProducts: ProductListItem[] = productTitles.map(
+  (title, index) => {
+    const id = index + 1
+    const hasImage = id % 9 !== 0
+
+    return {
+      id,
+      title,
+      price: String(3_500 + ((id * 7_315) % 94_000)),
+      stock: id % 11 === 0 ? 0 : (id * 3) % 18 + 1,
+      images: hasImage
+        ? [
+            {
+              id,
+              url: `https://picsum.photos/seed/product-${id}/600/600`,
+              position: 0,
+            },
+          ]
+        : undefined,
+      store: stores[index % stores.length],
+      category: categories[index % categories.length],
+      created_at: new Date(
+        Date.UTC(2026, 6, 1 + index),
+      ).toISOString(),
+    }
+  },
+)
