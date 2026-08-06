@@ -4,8 +4,10 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  min-width: 600px;
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px;
 }
 
 .profileHeader {
@@ -97,4 +99,3 @@
     opacity: 0.5;
   }
 }
-
