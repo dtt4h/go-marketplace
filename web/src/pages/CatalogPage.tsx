@@ -15,11 +15,11 @@ export function CatalogPage() {
   //}
 
   const products = mockProducts
-  const total = products.length
+  //const total = products.length
   
   return (
     <main className={cls.wrapperCatalog}>
-      <p>Найдено товаро: {total}</p>
+      {/*<p>Найдено товаро: {total}</p>*/}
 
       {products.length === 0 ? (
         <p>Товары пока отсутствуют</p>

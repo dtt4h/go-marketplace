@@ -112,8 +112,17 @@ legend {
   display: block;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
 body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  min-width: 320px;
+}
+
+#root {
+  min-height: 100vh;
 }

@@ -9,6 +9,7 @@ import { ProfilePage } from '../pages/ProfilePage'
 import { CatalogPage } from '../pages/CatalogPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { ProductPage } from '../pages/ProductPage'
+import { MainLayout } from './layout/MainLayout'
 
 function App() {
   useAuthInitialization()
@@ -23,7 +24,19 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<CatalogPage />} />
+      <Route element={<MainLayout />}>
+        <Route index element={<CatalogPage />} />
+        <Route
+          path="catalog"
+          element={<CatalogPage />}
+        />
+        <Route
+          path="products/:productId"
+          element={<ProductPage />}
+        />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+
       <Route 
         path="/auth" 
         element={
@@ -40,15 +53,6 @@ function App() {
           </ProtectedRoute>
         } 
       />
-      <Route
-        path="/catalog"
-        element = {<CatalogPage />}
-      />
-      <Route
-        path="/products/:productId"
-        element={<ProductPage />}
-      />
-      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }
