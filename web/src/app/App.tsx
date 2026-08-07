@@ -34,25 +34,25 @@ function App() {
           path="products/:productId"
           element={<ProductPage />}
         />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route
+          path="auth"
+          element={
+            <GuestRoute>
+              <AuthPage />
+            </GuestRoute>
+          }
+        />
+        <Route
+          path="profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
-      <Route 
-        path="/auth" 
-        element={
-          <GuestRoute>
-            <AuthPage />
-          </GuestRoute>
-        } 
-      />
-      <Route 
-        path="/profile" 
-        element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        } 
-      />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }
