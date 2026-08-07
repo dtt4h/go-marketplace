@@ -22,14 +22,16 @@
 }
 
 .mid {
-  width: 1200px;
-  padding-top: 14px;
   display: flex;
   flex-direction: row;
+  width: 100%;
+  max-width: 1200px;
+  padding: 14px 20px 0;
   gap: 24px;
-  //justify-content: space-between;
+
   .logoContainer {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: 10px;
     .logoLetter {
@@ -55,15 +57,18 @@
   
   .searchbarContainer {
     display: flex;
+    flex: 1;
+    min-width: 0;
     align-items: center;
+
     .searchInput {
-      width: 478px;
+      flex: 1;
+      min-width: 0;
       border-bottom: 1px solid $azure84;
       border-left: 1px solid $azure84;
       border-top: 1px solid $azure84;
       border-radius: 9px 0 0 9px;
       padding: 11px 15px;
-      width: 478px;
       height: 48px;
       font-family: $inter;
       font-weight: 400;
@@ -78,6 +83,7 @@
 
   .buttonsContainer{
     display: flex;
+    flex-shrink: 0;
     justify-content: space-between;
     gap: 8px;
     .becomeSeller {
@@ -113,8 +119,10 @@
 
 .bot {
   display: flex;
-  width: 1200px;
+  width: 100%;
+  max-width: 1200px;
   height: 44px;
+  padding: 0 20px;
 
   .categoryList {
     display: flex;
@@ -153,4 +161,13 @@
       }
     }
   }
+}
+
+.visuallyHidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
