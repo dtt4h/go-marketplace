@@ -1,0 +1,117 @@
+@use '../../../shared/styles/global.scss' as *;
+
+.footer {
+  padding-top: 48px;
+  display: flex;
+  flex-direction: column;
+  background-color: $azure12;
+  min-height: 256px;
+  justify-content: center;
+  align-items: center;
+}
+
+.footerTop {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1200px;
+  gap: 32px;
+  padding: 0 20px 45px;
+}
+
+.logoContainer {
+  display: flex;
+  flex-direction:column;
+  gap: 13px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logoLetter {
+      border-radius: 9px;
+      width: 38px;
+      height: 38px;
+      background-color: $azure52;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: 800;
+      font-size: 20px;
+      color: white;
+}
+
+.logoWord {
+  font-family: $inter;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+  color: white;
+}
+
+.descLogo {
+  max-width: 320px;
+  font-family: $inter;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 160%;
+  color: $azure64;
+}
+
+.navColumns {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.columnName {
+  font-family: $inter;
+  font-weight: 700;
+  font-size: 14px;
+  color: white;
+}
+
+.navList{
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+
+  > li > a,
+  .contactAddress {
+    font-family: $inter;
+    font-weight: 400;
+    font-size: 13px;
+    color: $azure73;
+  }
+}
+
+.footerBot{
+  width: 100%;
+  min-height: 49px;
+  border-top: 1px solid white;
+}
+
+.footerBotContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  min-height: 49px;
+  margin: 0 auto;
+  padding: 0 20px;
+
+  .footerDesc,
+  .footerPolicy,
+  .footerPolicy > a {
+    font-family: $inter;
+    font-weight: 400;
+    font-size: 12px;
+    color: $azure58;
+  }
+}
