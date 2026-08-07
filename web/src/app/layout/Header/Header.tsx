@@ -54,14 +54,14 @@ export function Header() {
           >
             Продавать
           </Button>
-          <Button
+          <Link
             className={cls.toProfile}
-            type="button"
+            to="/profile"
             aria-label="Открыть профиль"
             title="Открыть профиль"
           >
             <Profile aria-hidden="true" focusable="false" />
-          </Button>
+          </Link>
           <Button
             className={cls.toCart}
             type="button"

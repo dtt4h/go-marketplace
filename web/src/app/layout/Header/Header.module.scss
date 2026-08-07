@@ -103,8 +103,20 @@
       justify-content: center;
       background-color: white;
       width: 48px;
+      height: 48px;
       padding: 0;
       border: 1px solid $azure84;
+      border-radius: 10px;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 0.8;
+      }
+
+      &:focus-visible {
+        outline: 2px solid $azure52;
+        outline-offset: 2px;
+      }
     }
     .toCart {
       display: flex;
