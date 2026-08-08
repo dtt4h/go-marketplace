@@ -64,6 +64,8 @@ marketplace/
 │   │       └── payments.sql.go   # Запросы из sql/queries/payments.sql
 │   ├── logger/                   # Настройка slog
 │   │   └── logger.go
+│   ├── storage/                  # S3/MinIO объектное хранилище
+│   │   └── s3.go                 # ObjectStorageClient, NewObjectStorage
 │   └── modules/                  # Бизнес-модули
 │       ├── auth/                 # Аутентификация
 │       │   ├── handler.go        # Register, Login, Refresh, Logout
@@ -75,7 +77,9 @@ marketplace/
 │       │   └── repository.go     # Запросы к users, stores
 │       ├── products/             # Товары и категории
 │       │   ├── handler.go        # CRUD товаров, категории, модерация
+│       │   ├── image_handler.go  # Загрузка/удаление изображений
 │       │   ├── service.go        # Валидация, бизнес-логика
+│       │   ├── image_upload_service.go # Работа с S3 для изображений
 │       │   └── repository.go     # Запросы к products, product_images, categories
 │       ├── orders/               # Заказы
 │       │   ├── handler.go        # CreateOrder, GetOrder, ListOrders, UpdateStatus
@@ -228,14 +232,17 @@ Middleware применяется **к конкретному эндпоинту
 ## Модуль Orders
 
 ### Создание заказа
-1. Валидация: минимум 1 элемент, `quantity > 0`
-2. В транзакции:
+1. `user_id` берётся из тела запроса (`CreateOrderRequest.UserID`) — эндпоинт публичный, не требует JWT
+2. Валидация: `user_id > 0`, минимум 1 элемент, `quantity > 0`
+3. В транзакции:
    - Для каждого товара: `DecrementProductStock` (атомарно списывает остаток, проверяет `stock >= quantity`)
    - Если товар не найден → `ErrProductNotFound` (404)
    - Если остаток недостаточен → `ErrInsufficientStock` (400)
    - Расчёт суммы: `price × quantity` для каждого элемента, суммирование
    - Создание заказа + элементов заказа
-3. Возвращает детальную информацию о заказе
+4. Возвращает детальную информацию о заказе
+
+> `POST /orders` не требует авторизации — `user_id` передаётся в теле запроса. Это позволяет собирать корзину без логина. При логине можно перенести гостевой заказ на реальный `user_id`.
 
 ### Статус-машина заказов
 
@@ -255,6 +262,68 @@ pending ──(webhook)──► paid ──(seller)──► shipped ──(sel
 - `GET /orders/me/{id}` — покупатель (владелец) или продавец (товары которого в заказе)
 - `GET /orders/me` — только покупатель (свои заказы)
 - `GET /orders/seller` — только продавец (заказы с его товарами)
+
+## S3/MinIO хранилище
+
+Изображения товаров хранятся в S3-совместимом хранилище (MinIO в Docker, или AWS S3 в production).
+
+### Архитектура
+
+```
+┌─────────────────┐     PUT     ┌──────────────┐
+│  Frontend/Client │ ────────── │  S3/MinIO    │
+│  (presigned URL) │            │  (bucket)    │
+└─────────────────┘            └──────────────┘
+         ▲                               ▲
+         │  GET (presigned)              │
+         │                               │
+┌────────┴─────────┐            ┌────────▼──────┐
+│  Backend (Go)    │            │  product_images│
+│  - ImageHandler  │───────────│  .url = object │
+│  - ImageService  │  DB save │  .object_key    │
+└──────────────────┘            └───────────────┘
+```
+
+### Поток загрузки изображения
+
+**Вариант 1 — через бэкенд (multipart/form-data):**
+1. Клиент отправляет `POST /products/{id}/images` с файлом
+2. Backend валидирует тип (jpeg/png/webp/gif/svg), размер (≤10 МБ)
+3. `ImageUploadService.UploadImage` загружает файл в S3
+4. Сохраняет запись в `product_images` (`url` = object key, `object_key` = S3 key)
+5. Возвращает `{id, url, position}`
+
+**Вариант 2 — прямая загрузка (presigned URL):**
+1. Клиент запрашивает `GET /products/{id}/images/presigned?content_type=image/jpeg`
+2. Backend генерирует presigned URL через `s3.PresignedPutObject`
+3. Клиент делает `PUT <presigned_url>` с телом файла напрямую в S3
+4. После успешной загрузки клиент вызывает `POST /products/{id}/images` с `url` = object key
+
+### Конфигурация
+
+| Переменная | По умолчанию | Описание |
+|------------|--------------|----------|
+| `S3_ENDPOINT` | — | URL MinIO/S3 (напр. `http://localhost:9000`) |
+| `S3_REGION` | — | Регион (напр. `us-east-1`) |
+| `S3_ACCESS_KEY` | — | Access key |
+| `S3_SECRET_KEY` | — | Secret key |
+| `S3_BUCKET` | — | Имя бакета |
+
+> Если `S3_ENDPOINT` не задан — эндпоинты загрузки изображений не регистрируются.
+
+### Docker Compose
+
+Сервис `minio` запускается вместе с приложением:
+
+```yaml
+minio:
+  image: minio/minio:latest
+  ports: ["9000:9000", "9001:9001"]
+  environment:
+    MINIO_ROOT_USER: minioadmin
+    MINIO_ROOT_PASSWORD: minioadmin
+  command: server /data --console-address ":9001"
+```
 
 ## Модуль Payments
 
@@ -311,6 +380,11 @@ httputil.InternalError(w, "error details")          // 500 (логирует д�
 | `JWT_SECRET` | **обязателен** | Секрет для подписи JWT |
 | `JWT_ACCESS_TTL` | `15m` | Время жизни access token |
 | `JWT_REFRESH_TTL` | `168h` | Время жизни refresh token (7 дней) |
+| `S3_ENDPOINT` | — | URL S3/MinIO (напр. `http://localhost:9000`) |
+| `S3_REGION` | — | Регион S3 |
+| `S3_ACCESS_KEY` | — | Access key |
+| `S3_SECRET_KEY` | — | Secret key |
+| `S3_BUCKET` | — | Имя бакета |
 | `PAYMENT_GATEWAY_URL` | — | URL платёжного шлюза (планируется) |
 | `PAYMENT_GATEWAY_KEY` | — | API-ключ платёжного шлюза (планируется) |
 | `REDIS_HOST` | `localhost` | Хост Redis (планируется) |

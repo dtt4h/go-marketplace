@@ -26,28 +26,25 @@ func NewOrderHandler(service OrderService) *OrderHandler {
 // @Summary      Create an order
 // @Description  Creates an order from provided items, decrements stock
 // @Tags         orders
-// @Security     BearerAuth
 // @Accept       json
 // @Produce      json
 // @Param        request  body      dtos.CreateOrderRequest  true  "Order data"
 // @Success      201  {object}  dtos.OrderResponse
 // @Failure      400  {object}  httputil.ErrorResponse
-// @Failure      401  {object}  httputil.ErrorResponse
 // @Router       /orders [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := mw.UserIDFromCtx(r.Context())
-	if !ok {
-		httputil.Unauthorized(w, "not authenticated")
-		return
-	}
-
 	var req dtos.CreateOrderRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
 		httputil.ValidationError(w, "invalid request body", nil)
 		return
 	}
 
-	resp, err := h.service.CreateOrder(r.Context(), userID, req)
+	if req.UserID == 0 {
+		httputil.ValidationError(w, "user_id is required", nil)
+		return
+	}
+
+	resp, err := h.service.CreateOrder(r.Context(), req.UserID, req)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrOrderEmpty):

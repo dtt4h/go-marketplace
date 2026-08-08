@@ -78,6 +78,7 @@ PostgreSQL 16 (образ `postgres:16-alpine`). Доступ через pgx (п
        │   │  │ product_id (FK)  │
        │   │  │ url              │
        │   │  │ position         │
+       │   │  │ object_key       │
        │   │  └──────────────────┘
        │   │
        │   │          ┌──────────────────┐
@@ -261,19 +262,23 @@ CREATE INDEX idx_products_title_trgm  ON products USING gin (title gin_trgm_ops)
 |---------|-----|-------------|----------|
 | `id` | `BIGSERIAL` | PK | |
 | `product_id` | `BIGINT` | FK → products(id), NOT NULL | Товар |
-| `url` | `TEXT` | NOT NULL | URL изображения |
+| `url` | `TEXT` | NOT NULL | URL/ключ изображения |
 | `position` | `INTEGER` | NOT NULL, DEFAULT 0 | Порядок отображения |
+| `object_key` | `TEXT` | | S3/MinIO object key |
 
 ```sql
 CREATE TABLE product_images (
     id         BIGSERIAL  PRIMARY KEY,
     product_id BIGINT     NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     url        TEXT       NOT NULL,
-    position   INTEGER    NOT NULL DEFAULT 0
+    position   INTEGER    NOT NULL DEFAULT 0,
+    object_key TEXT
 );
 
 CREATE INDEX idx_product_images_product_id ON product_images(product_id);
 ```
+
+> `url` хранит object key (путь в S3). Для получения публичного URL используется presigned URL через API.
 
 ### orders
 
@@ -405,13 +410,13 @@ $$ LANGUAGE plpgsql;
 
 ## sqlc
 
-SQL-запросы пишутся в `sql/queries/`. Для генерации используется `sqlc.yaml`:
+SQL-запросы пишутся в `sql/queries/`. Схема берётся из `migrations/`. Для генерации используется `sqlc.yaml`:
 
 ```yaml
 version: "2"
 sql:
   - engine: "postgresql"
-    schema: "sql/schemas"
+    schema: "migrations"
     queries: "sql/queries"
     gen:
       go:
@@ -422,7 +427,7 @@ sql:
         json_tags_case_style: "camel"
 ```
 
-**Важно:** `sql/schemas/` — копия схемы, синхронизировать с `migrations/` вручную.
+**Важно:** `sqlc.yaml` использует `migrations/` как источник схемы — синхронизация с БД автоматическая.
 
 ### Типы nullable в sqlc
 

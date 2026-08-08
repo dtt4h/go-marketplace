@@ -372,6 +372,64 @@ Authorization: Bearer <access_token>
 
 **Response 204:** No Content
 
+### POST `/products/{id}/images` 🔒 `[seller]`
+Загрузка изображения для товара. Файл отправляется как `multipart/form-data`.
+
+**Query params:** нет
+
+**Request:** `multipart/form-data` с полем `file`
+
+**Поддерживаемые типы:** `image/jpeg`, `image/png`, `image/webp`, `image/gif`, `image/svg+xml`
+
+**Максимальный размер:** 10 МБ
+
+**Response 201:**
+```json
+{
+  "id": 1,
+  "url": "https://...",
+  "position": 0
+}
+```
+
+**Ошибки:**
+- `VALIDATION_ERROR` (400) — файл не указан, неподдерживаемый тип, пустой файл
+- `NOT_FOUND` (404) — товар не найден
+- `FORBIDDEN` (403) — не владелец магазина
+
+### DELETE `/products/images/{id}` 🔒 `[seller]`
+Удаление изображения товара. Только владелец магазина.
+
+**Response 204:** No Content
+
+**Ошибки:**
+- `NOT_FOUND` (404) — изображение не найдено
+- `FORBIDDEN` (403) — не владелец магазина
+
+### GET `/products/{id}/images/presigned` 🔒 `[seller]`
+Получение presigned URL для прямой загрузки файла в S3/MinIO (обход бэкенда).
+
+**Query params:**
+
+| Параметр | Тип | Описание |
+|----------|-----|----------|
+| `content_type` | string | MIME-тип файла (по умолчанию `application/octet-stream`) |
+
+**Response 200:**
+```json
+{
+  "upload_url": "https://minio:9000/bucket/products/images/uuid.jpg?X-Amz-...",
+  "object_key": "products/images/uuid.jpg",
+  "content_type": "image/jpeg"
+}
+```
+
+> `upload_url` — прямая ссылка для `PUT` запроса с телом файла. Срок действия — 15 минут.
+
+**Ошибки:**
+- `NOT_FOUND` (404) — товар не найден
+- `FORBIDDEN` (403) — не владелец магазина
+
 ### GET `/products/categories`
 Дерево категорий (рекурсивный CTE).
 
@@ -414,12 +472,13 @@ Authorization: Bearer <access_token>
 
 ## Orders
 
-### POST `/orders` 🔒
-Создание заказа. Списывает товар со склада в транзакции.
+### POST `/orders`
+Создание заказа. Списывает товар со склада в транзакции. Не требует авторизации — `user_id` передаётся в теле запроса.
 
 **Request:**
 ```json
 {
+  "user_id": 1,
   "items": [
     {"product_id": 1, "quantity": 2},
     {"product_id": 5, "quantity": 1}
@@ -429,6 +488,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Правила валидации:**
+- `user_id` — обязательное, больше 0
 - `items` — минимум 1 элемент
 - `quantity` — больше 0
 - Товар должен существовать и иметь достаточный остаток
@@ -454,7 +514,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Ошибки:**
-- `VALIDATION_ERROR` (400) — пустой заказ, `quantity <= 0`
+- `VALIDATION_ERROR` (400) — пустой заказ, `quantity <= 0`, `user_id` не указан
 - `NOT_FOUND` (404) — товар не найден
 - `VALIDATION_ERROR` (400) — недостаточный остаток
 
