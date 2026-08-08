@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/dtt4h/go-marketplace/internal/database"
 	"github.com/dtt4h/go-marketplace/internal/logger"
 	"github.com/dtt4h/go-marketplace/internal/server"
+	"github.com/dtt4h/go-marketplace/internal/storage"
 )
 
 func main() {
@@ -52,7 +54,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	srv := server.New(cfg, log, db)
+	store, err := storage.NewObjectStorage(storage.ObjectStorageConfig{
+		Endpoint:  cfg.S3.Endpoint,
+		Region:    cfg.S3.Region,
+		AccessKey: cfg.S3.AccessKey,
+		SecretKey: cfg.S3.SecretKey,
+		Bucket:    cfg.S3.Bucket,
+		Secure:    cfg.S3.Endpoint != "" && strings.HasPrefix(cfg.S3.Endpoint, "https://"),
+	})
+	if err != nil {
+		log.Warn("failed to initialize S3 storage, images will be unavailable", slog.String("error", err.Error()))
+	}
+
+	srv := server.New(cfg, log, db, store)
 
 	go func() {
 		if err := srv.Start(); err != nil && err != http.ErrServerClosed {

@@ -12,21 +12,24 @@ import (
 
 	"github.com/dtt4h/go-marketplace/internal/config"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
+	"github.com/dtt4h/go-marketplace/internal/storage"
 )
 
 type Server struct {
 	cfg    *config.Config
 	log    *slog.Logger
 	db     *pgxpool.Pool
+	store  storage.ObjectStorage
 	router *chi.Mux
 	http   *http.Server
 }
 
-func New(cfg *config.Config, log *slog.Logger, db *pgxpool.Pool) *Server {
+func New(cfg *config.Config, log *slog.Logger, db *pgxpool.Pool, store storage.ObjectStorage) *Server {
 	s := &Server{
 		cfg:    cfg,
 		log:    log,
 		db:     db,
+		store:  store,
 		router: chi.NewRouter(),
 	}
 	s.setupMiddleware()

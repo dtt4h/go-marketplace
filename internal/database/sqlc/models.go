@@ -238,10 +238,11 @@ type Product struct {
 }
 
 type ProductImage struct {
-	ID        int64  `json:"id"`
-	ProductID int64  `json:"productId"`
-	Url       string `json:"url"`
-	Position  int32  `json:"position"`
+	ID        int64       `json:"id"`
+	ProductID int64       `json:"productId"`
+	Url       string      `json:"url"`
+	Position  int32       `json:"position"`
+	ObjectKey pgtype.Text `json:"objectKey"`
 }
 
 type RefreshToken struct {

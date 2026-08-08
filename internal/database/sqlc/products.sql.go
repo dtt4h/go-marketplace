@@ -53,27 +53,44 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 }
 
 const createProductImage = `-- name: CreateProductImage :one
-INSERT INTO product_images (product_id, url, position)
-VALUES ($1, $2, $3)
-RETURNING id, product_id, url, position
+INSERT INTO product_images (product_id, url, position, object_key)
+VALUES ($1, $2, $3, $4)
+RETURNING id, product_id, url, position, object_key
 `
 
 type CreateProductImageParams struct {
-	ProductID int64  `json:"productId"`
-	Url       string `json:"url"`
-	Position  int32  `json:"position"`
+	ProductID int64       `json:"productId"`
+	Url       string      `json:"url"`
+	Position  int32       `json:"position"`
+	ObjectKey pgtype.Text `json:"objectKey"`
 }
 
 func (q *Queries) CreateProductImage(ctx context.Context, arg CreateProductImageParams) (ProductImage, error) {
-	row := q.db.QueryRow(ctx, createProductImage, arg.ProductID, arg.Url, arg.Position)
+	row := q.db.QueryRow(ctx, createProductImage,
+		arg.ProductID,
+		arg.Url,
+		arg.Position,
+		arg.ObjectKey,
+	)
 	var i ProductImage
 	err := row.Scan(
 		&i.ID,
 		&i.ProductID,
 		&i.Url,
 		&i.Position,
+		&i.ObjectKey,
 	)
 	return i, err
+}
+
+const deleteImageByID = `-- name: DeleteImageByID :exec
+DELETE FROM product_images
+WHERE id = $1
+`
+
+func (q *Queries) DeleteImageByID(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteImageByID, id)
+	return err
 }
 
 const deleteProduct = `-- name: DeleteProduct :exec
@@ -94,6 +111,25 @@ WHERE product_id = $1
 func (q *Queries) DeleteProductImages(ctx context.Context, productID int64) error {
 	_, err := q.db.Exec(ctx, deleteProductImages, productID)
 	return err
+}
+
+const getImageByID = `-- name: GetImageByID :one
+SELECT id, product_id, url, position, object_key
+FROM product_images
+WHERE id = $1
+`
+
+func (q *Queries) GetImageByID(ctx context.Context, id int64) (ProductImage, error) {
+	row := q.db.QueryRow(ctx, getImageByID, id)
+	var i ProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.Url,
+		&i.Position,
+		&i.ObjectKey,
+	)
+	return i, err
 }
 
 const getProduct = `-- name: GetProduct :one
@@ -213,7 +249,7 @@ func (q *Queries) ListCategories(ctx context.Context) ([]ListCategoriesRow, erro
 }
 
 const listProductImages = `-- name: ListProductImages :many
-SELECT id, product_id, url, position
+SELECT id, product_id, url, position, object_key
 FROM product_images
 WHERE product_id = $1
 ORDER BY position ASC
@@ -233,6 +269,7 @@ func (q *Queries) ListProductImages(ctx context.Context, productID int64) ([]Pro
 			&i.ProductID,
 			&i.Url,
 			&i.Position,
+			&i.ObjectKey,
 		); err != nil {
 			return nil, err
 		}
@@ -245,7 +282,7 @@ func (q *Queries) ListProductImages(ctx context.Context, productID int64) ([]Pro
 }
 
 const listProductImagesByProductIDs = `-- name: ListProductImagesByProductIDs :many
-SELECT id, product_id, url, position
+SELECT id, product_id, url, position, object_key
 FROM product_images
 WHERE product_id = ANY($1::bigint[])
 ORDER BY product_id, position ASC
@@ -265,6 +302,7 @@ func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, dollar_1 []
 			&i.ProductID,
 			&i.Url,
 			&i.Position,
+			&i.ObjectKey,
 		); err != nil {
 			return nil, err
 		}

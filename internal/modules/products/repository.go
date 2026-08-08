@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ProductRepository defines data access methods for products.
 type ProductRepository interface {
 	ListCategories(ctx context.Context) ([]db.ListCategoriesRow, error)
 	ListProducts(ctx context.Context, storeID, categoryID *int64, minPrice, maxPrice *string, search *string, sort string, page, limit int) ([]db.ListProductsRow, int64, error)
@@ -22,6 +23,8 @@ type ProductRepository interface {
 	ListProductImages(ctx context.Context, productID int64) ([]db.ProductImage, error)
 	ListProductImagesByProductIDs(ctx context.Context, productIDs []int64) ([]db.ProductImage, error)
 	GetProductStoreOwner(ctx context.Context, productID int64) (db.GetProductStoreOwnerRow, error)
+	GetImageByID(ctx context.Context, id int64) (db.ProductImage, error)
+	DeleteImageByID(ctx context.Context, id int64) error
 }
 
 type productRepository struct {
@@ -29,6 +32,7 @@ type productRepository struct {
 	pool    *pgxpool.Pool
 }
 
+// NewProductRepository creates a new ProductRepository.
 func NewProductRepository(queries *db.Queries, pool *pgxpool.Pool) ProductRepository {
 	return &productRepository{queries: queries, pool: pool}
 }
@@ -42,11 +46,11 @@ func (r *productRepository) ListProducts(ctx context.Context, storeID, categoryI
 		sort = "created_desc"
 	}
 
-	minP, err := toNumeric(minPrice)
+	minP, err := pgutil.ToNumeric(minPrice)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invalid min_price: %w", err)
 	}
-	maxP, err := toNumeric(maxPrice)
+	maxP, err := pgutil.ToNumeric(maxPrice)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invalid max_price: %w", err)
 	}
@@ -119,10 +123,12 @@ func (r *productRepository) CreateProductWithImages(ctx context.Context, storeID
 	}
 
 	for i, url := range images {
+		key := url
 		if _, err := q.CreateProductImage(ctx, db.CreateProductImageParams{
 			ProductID: product.ID,
 			Url:       url,
 			Position:  int32(i),
+			ObjectKey: pgutil.NullText(&key),
 		}); err != nil {
 			return db.Product{}, fmt.Errorf("create product image: %w", err)
 		}
@@ -185,15 +191,12 @@ func (r *productRepository) GetProductStoreOwner(ctx context.Context, productID 
 	return r.queries.GetProductStoreOwner(ctx, productID)
 }
 
-func toNumeric(v *string) (pgtype.Numeric, error) {
-	if v == nil {
-		return pgtype.Numeric{Valid: false}, nil
-	}
-	var n pgtype.Numeric
-	if err := n.Scan(*v); err != nil {
-		return pgtype.Numeric{}, err
-	}
-	return n, nil
+func (r *productRepository) GetImageByID(ctx context.Context, id int64) (db.ProductImage, error) {
+	return r.queries.GetImageByID(ctx, id)
+}
+
+func (r *productRepository) DeleteImageByID(ctx context.Context, id int64) error {
+	return r.queries.DeleteImageByID(ctx, id)
 }
 
 func toSearchText(v *string) pgtype.Text {

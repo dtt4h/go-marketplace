@@ -7,6 +7,7 @@ import (
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 )
 
+// OrderRepository defines data access methods for order operations.
 type OrderRepository interface {
 	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.Order, error)
 	CreateOrderItem(ctx context.Context, arg db.CreateOrderItemParams) (db.OrderItem, error)
@@ -24,6 +25,7 @@ type orderRepository struct {
 	queries *db.Queries
 }
 
+// NewOrderRepository creates a new OrderRepository.
 func NewOrderRepository(queries *db.Queries) OrderRepository {
 	return &orderRepository{queries: queries}
 }

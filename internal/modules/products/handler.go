@@ -12,10 +12,12 @@ import (
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
 )
 
+// ProductHandler handles HTTP requests for product operations.
 type ProductHandler struct {
 	service ProductService
 }
 
+// NewProductHandler creates a new ProductHandler.
 func NewProductHandler(service ProductService) *ProductHandler {
 	return &ProductHandler{service: service}
 }

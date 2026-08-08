@@ -29,6 +29,7 @@ type storeResolver interface {
 	GetUserByID(ctx context.Context, id int64) (db.User, error)
 }
 
+// OrderService defines business logic for order operations.
 type OrderService interface {
 	CreateOrder(ctx context.Context, userID int64, req dtos.CreateOrderRequest) (dtos.OrderResponse, error)
 	GetOrder(ctx context.Context, userID int64, orderID int64) (dtos.OrderResponse, error)
@@ -43,6 +44,7 @@ type orderService struct {
 	pool   *pgxpool.Pool
 }
 
+// NewOrderService creates a new OrderService.
 func NewOrderService(repo OrderRepository, solver storeResolver, pool *pgxpool.Pool) OrderService {
 	return &orderService{repo: repo, solver: solver, pool: pool}
 }
@@ -139,7 +141,6 @@ func (s *orderService) GetOrder(ctx context.Context, userID, orderID int64) (dto
 		return dtos.OrderResponse{}, fmt.Errorf("get order: %w", err)
 	}
 
-	// Allow access to buyer (owner) or seller (whose products are in the order)
 	if order.UserID != userID {
 		items, err := s.repo.GetOrderItems(ctx, orderID)
 		if err != nil {
@@ -269,9 +270,6 @@ func (s *orderService) UpdateOrderStatus(ctx context.Context, userID int64, orde
 		return dtos.OrderResponse{}, ErrForbidden
 	}
 
-	// Seller transitions: shipped, delivered, cancelled
-	// Buyer transitions: cancelled
-	// paid is set only by payment webhook
 	var validTransitions map[db.OrderStatus][]db.OrderStatus
 	if isSeller && !isBuyer {
 		validTransitions = map[db.OrderStatus][]db.OrderStatus{

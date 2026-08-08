@@ -10,10 +10,12 @@ import (
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
 )
 
+// AuthHandler handles HTTP requests for authentication.
 type AuthHandler struct {
 	service AuthService
 }
 
+// NewAuthHandler creates a new AuthHandler.
 func NewAuthHandler(service AuthService) *AuthHandler {
 	return &AuthHandler{service: service}
 }
