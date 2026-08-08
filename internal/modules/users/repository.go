@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// UserRepository defines data access methods for user operations.
 type UserRepository interface {
 	GetUserByID(ctx context.Context, id int64) (db.User, error)
 	UpdateUser(ctx context.Context, id int64, username, avatarURL, phone *string) (db.User, error)
@@ -23,6 +24,7 @@ type userRepository struct {
 	pool    *pgxpool.Pool
 }
 
+// NewUserRepository creates a new UserRepository.
 func NewUserRepository(queries *db.Queries, pool *pgxpool.Pool) UserRepository {
 	return &userRepository{queries: queries, pool: pool}
 }

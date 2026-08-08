@@ -31,6 +31,7 @@ var validSorts = map[string]bool{
 	"created_desc": true,
 }
 
+// ProductService defines business logic for product operations.
 type ProductService interface {
 	ListCategories(ctx context.Context) ([]dtos.CategoryResponse, error)
 	ListProducts(ctx context.Context, storeID, categoryID *int64, minPrice, maxPrice *string, search *string, sort string, page, limit int) ([]dtos.ProductListItem, int64, error)
@@ -46,10 +47,12 @@ type productService struct {
 	storeRepo StoreResolver
 }
 
+// StoreResolver provides store lookup capabilities.
 type StoreResolver interface {
 	GetStoreByUserID(ctx context.Context, userID int64) (db.Store, error)
 }
 
+// NewProductService creates a new ProductService.
 func NewProductService(repo ProductRepository, storeRepo StoreResolver) ProductService {
 	return &productService{repo: repo, storeRepo: storeRepo}
 }

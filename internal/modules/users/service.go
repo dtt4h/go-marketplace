@@ -17,6 +17,7 @@ var (
 	ErrStoreNameRequired  = errors.New("store name is required")
 )
 
+// UserService defines business logic for user profile operations.
 type UserService interface {
 	GetProfile(ctx context.Context, userID int64) (dtos.ProfileResponse, error)
 	UpdateProfile(ctx context.Context, userID int64, req dtos.UpdateProfileRequest) (dtos.ProfileResponse, error)
@@ -27,6 +28,7 @@ type userService struct {
 	repo UserRepository
 }
 
+// NewUserService creates a new UserService.
 func NewUserService(repo UserRepository) UserService {
 	return &userService{repo: repo}
 }

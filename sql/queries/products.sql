@@ -77,21 +77,21 @@ SET status = $2,
 WHERE id = $1;
 
 -- name: ListProductImages :many
-SELECT id, product_id, url, position
+SELECT id, product_id, url, position, object_key
 FROM product_images
 WHERE product_id = $1
 ORDER BY position ASC;
 
 -- name: ListProductImagesByProductIDs :many
-SELECT id, product_id, url, position
+SELECT id, product_id, url, position, object_key
 FROM product_images
 WHERE product_id = ANY($1::bigint[])
 ORDER BY product_id, position ASC;
 
 -- name: CreateProductImage :one
-INSERT INTO product_images (product_id, url, position)
-VALUES ($1, $2, $3)
-RETURNING id, product_id, url, position;
+INSERT INTO product_images (product_id, url, position, object_key)
+VALUES ($1, $2, $3, $4)
+RETURNING id, product_id, url, position, object_key;
 
 -- name: DeleteProductImages :exec
 DELETE FROM product_images
@@ -102,3 +102,12 @@ SELECT p.id, s.user_id AS store_owner_id
 FROM products p
 JOIN stores s ON p.store_id = s.id
 WHERE p.id = $1;
+
+-- name: GetImageByID :one
+SELECT id, product_id, url, position, object_key
+FROM product_images
+WHERE id = $1;
+
+-- name: DeleteImageByID :exec
+DELETE FROM product_images
+WHERE id = $1;

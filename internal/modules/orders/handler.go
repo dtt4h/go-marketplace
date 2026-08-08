@@ -12,10 +12,12 @@ import (
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
 )
 
+// OrderHandler handles HTTP requests for order operations.
 type OrderHandler struct {
 	service OrderService
 }
 
+// NewOrderHandler creates a new OrderHandler.
 func NewOrderHandler(service OrderService) *OrderHandler {
 	return &OrderHandler{service: service}
 }

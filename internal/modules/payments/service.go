@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
@@ -14,19 +13,21 @@ import (
 )
 
 var (
-	ErrOrderNotFound      = errors.New("order not found")
-	ErrPaymentExists      = errors.New("payment already exists for this order")
-	ErrPaymentNotFound    = errors.New("payment not found")
-	ErrAlreadyPaid        = errors.New("order is already paid")
-	ErrInvalidWebhook     = errors.New("invalid webhook payload")
-	ErrRefundFailed       = errors.New("refund failed")
+	ErrOrderNotFound   = errors.New("order not found")
+	ErrPaymentExists   = errors.New("payment already exists for this order")
+	ErrPaymentNotFound = errors.New("payment not found")
+	ErrAlreadyPaid     = errors.New("order is already paid")
+	ErrInvalidWebhook  = errors.New("invalid webhook payload")
+	ErrRefundFailed    = errors.New("refund failed")
 )
 
+// OrderFetcher provides order lookup capabilities.
 type OrderFetcher interface {
 	GetOrder(ctx context.Context, orderID int64) (db.Order, error)
 	UpdateOrderStatus(ctx context.Context, arg db.UpdateOrderStatusParams) (db.Order, error)
 }
 
+// PaymentService defines business logic for payment operations.
 type PaymentService interface {
 	CreatePayment(ctx context.Context, userID int64, req dtos.CreatePaymentRequest) (dtos.PaymentResponse, error)
 	GetPayment(ctx context.Context, userID, paymentID int64) (dtos.PaymentResponse, error)
@@ -40,6 +41,7 @@ type paymentService struct {
 	pool   *pgxpool.Pool
 }
 
+// NewPaymentService creates a new PaymentService.
 func NewPaymentService(repo PaymentRepository, orders OrderFetcher, pool *pgxpool.Pool) PaymentService {
 	return &paymentService{repo: repo, orders: orders, pool: pool}
 }
@@ -67,7 +69,7 @@ func (s *paymentService) CreatePayment(ctx context.Context, userID int64, req dt
 	}
 
 	amountStr := dtos.NumericToStr(order.Total)
-	amount, err := toNumeric(amountStr)
+	amount, err := pgutil.ToNumeric(&amountStr)
 	if err != nil {
 		return dtos.PaymentResponse{}, fmt.Errorf("parse amount: %w", err)
 	}
@@ -77,7 +79,7 @@ func (s *paymentService) CreatePayment(ctx context.Context, userID int64, req dt
 		Amount:            amount,
 		Currency:          "RUB",
 		Provider:          "mock",
-		ProviderPaymentID: pgtype.Text{Valid: false},
+		ProviderPaymentID: pgutil.NullText(nil),
 	})
 	if err != nil {
 		return dtos.PaymentResponse{}, fmt.Errorf("create payment: %w", err)
@@ -133,9 +135,9 @@ func (s *paymentService) HandleWebhook(ctx context.Context, req dtos.WebhookRequ
 	}
 
 	_, err = s.repo.UpdatePaymentStatus(ctx, db.UpdatePaymentStatusParams{
-		ID:     payment.ID,
-		Status: status,
-		ProviderPaymentID: pgtype.Text{String: req.ProviderPaymentID, Valid: req.ProviderPaymentID != ""},
+		ID:                payment.ID,
+		Status:            status,
+		ProviderPaymentID: pgutil.NullText(&req.ProviderPaymentID),
 	})
 	if err != nil {
 		return fmt.Errorf("update payment status: %w", err)

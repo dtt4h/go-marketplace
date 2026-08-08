@@ -83,6 +83,18 @@ func (s *Server) registerProductRoutes(r chi.Router) {
 
 	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
 		Patch("/products/{id}/moderate", productHandler.ModerateProduct)
+
+	if s.store != nil {
+		imageSvc := products.NewImageUploadService(productRepo, s.store, s.db)
+		imageHandler := products.NewImageHandler(imageSvc)
+
+		r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
+			Post("/products/{id}/images", imageHandler.UploadImage)
+		r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
+			Delete("/products/images/{id}", imageHandler.DeleteImage)
+		r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
+			Get("/products/{id}/images/presigned", imageHandler.GetPresignedUploadURL)
+	}
 }
 
 func (s *Server) registerOrderRoutes(r chi.Router) {

@@ -9,10 +9,12 @@ import (
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
 )
 
+// UserHandler handles HTTP requests for user profile operations.
 type UserHandler struct {
 	service UserService
 }
 
+// NewUserHandler creates a new UserHandler.
 func NewUserHandler(service UserService) *UserHandler {
 	return &UserHandler{service: service}
 }

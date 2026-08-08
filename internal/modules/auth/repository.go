@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// AuthRepository defines data access methods for authentication.
 type AuthRepository interface {
 	CreateUser(ctx context.Context, email, passwordHash string, role db.UserRole, username string) (db.User, error)
 	GetUserByEmail(ctx context.Context, email string) (db.User, error)
@@ -22,6 +23,7 @@ type authRepository struct {
 	queries *db.Queries
 }
 
+// NewAuthRepository creates a new AuthRepository.
 func NewAuthRepository(queries *db.Queries) AuthRepository {
 	return &authRepository{queries: queries}
 }

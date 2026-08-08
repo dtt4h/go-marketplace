@@ -26,6 +26,7 @@ var (
 	ErrWeakPassword        = errors.New("password must be at least 8 characters")
 )
 
+// AuthService defines business logic for authentication.
 type AuthService interface {
 	Register(ctx context.Context, req dtos.RegisterRequest) (dtos.AuthResponse, error)
 	Login(ctx context.Context, req dtos.LoginRequest) (dtos.AuthResponse, error)
@@ -38,6 +39,7 @@ type authService struct {
 	cfg  *config.Config
 }
 
+// NewAuthService creates a new AuthService.
 func NewAuthService(repo AuthRepository, cfg *config.Config) AuthService {
 	return &authService{repo: repo, cfg: cfg}
 }

@@ -16,6 +16,7 @@ type Config struct {
 	JWT      JWTConfig
 	Payments PaymentsConfig
 	Redis    RedisConfig
+	S3       S3Config
 }
 
 type ServerConfig struct {
@@ -58,6 +59,14 @@ type RedisConfig struct {
 	DB   int
 }
 
+type S3Config struct {
+	Endpoint  string
+	Region    string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+}
+
 func (r RedisConfig) Addr() string {
 	return fmt.Sprintf("%s:%d", r.Host, r.Port)
 }
@@ -94,6 +103,13 @@ func Load() (*Config, error) {
 			Host: getEnv("REDIS_HOST", "localhost"),
 			Port: getEnvInt("REDIS_PORT", 6379),
 			DB:   getEnvInt("REDIS_DB", 0),
+		},
+		S3: S3Config{
+			Endpoint:  getEnv("S3_ENDPOINT", ""),
+			Region:    getEnv("S3_REGION", ""),
+			AccessKey: getEnv("S3_ACCESS_KEY", ""),
+			SecretKey: getEnv("S3_SECRET_KEY", ""),
+			Bucket:    getEnv("S3_BUCKET", ""),
 		},
 	}
 
