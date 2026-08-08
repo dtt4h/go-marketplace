@@ -1,11 +1,12 @@
 import { useParams } from 'react-router-dom'
 
-import { mockProducts } from '../features/products/mocks/product'
+import { ProductDetails } from '../features/products/component/ProductDetails/ProductDetails'
+import { mockProductDetails } from '../features/products/mocks/productDetails'
 
 export function ProductPage() {
   const { productId } = useParams()
 
-  const product = mockProducts.find(
+  const product = mockProductDetails.find(
     (item) => item.id === Number(productId),
   )
 
@@ -15,17 +16,7 @@ export function ProductPage() {
 
   return (
     <main>
-      <h1>{product.title}</h1>
-
-      <p>{product.price} ₽</p>
-
-      <p>
-        Магазин: {product.store?.name ?? 'Не указан'}
-      </p>
-
-      <p>
-        Категория: {product.category?.name ?? 'Не указана'}
-      </p>
+      <ProductDetails product={product} />
     </main>
   )
 }
