@@ -16,7 +16,7 @@ export function ProductPage() {
 
   return (
     <main>
-      <ProductDetails product={product} />
+      <ProductDetails key={product.id} product={product} />
     </main>
   )
 }
