@@ -16,13 +16,16 @@ export const mockProductDetails: ProductDetails[] =
       descriptions[index % descriptions.length],
     status: 'active',
     images: product.images
-      ? Array.from({ length: 4 }, (_, imageIndex) => ({
-          id: product.id * 10 + imageIndex,
-          url:
-            `https://picsum.photos/seed/` +
-            `product-${product.id}-${imageIndex}/900/900`,
-          position: imageIndex,
-        }))
+      ? [
+          product.images[0],
+          ...Array.from({ length: 3 }, (_, imageIndex) => ({
+            id: 1000 + product.id * 10 + imageIndex,
+            url:
+              `https://picsum.photos/seed/` +
+              `product-${product.id}-detail-${imageIndex}/900/900`,
+            position: imageIndex + 1,
+          })),
+        ]
       : undefined,
     updated_at: product.created_at,
   }))

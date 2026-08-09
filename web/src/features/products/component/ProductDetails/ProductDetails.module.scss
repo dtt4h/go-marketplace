@@ -1,0 +1,244 @@
+@use '../../../../shared/styles/global.scss' as *;
+
+.productMainContainer  {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  gap: 40px;
+  padding: 0 20px 65px;
+}
+
+.leftSide {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 594px;
+  min-width: 0;
+  width: 100%;
+  max-width: 594px;
+}
+
+.imgsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mainImageContainer,
+.noImageContainer {
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background-color: $grey953;
+  cursor: pointer;
+}
+
+.mainImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.noImageContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.thumbnails {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.thumbnailButton {
+  overflow: hidden;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-color: $grey953;
+
+  &[aria-pressed='true'] {
+    border-color: $azure52;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $azure52;
+    outline-offset: 2px;
+  }
+}
+
+.thumbnailImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.descContainer {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.descTitle {
+  font-family: $inter;
+  font-weight: 700;
+  font-size: 21px;
+  color: $azure12;
+}
+
+.productDescription {
+  font-family: $inter;
+  font-weight: 400;
+  font-size: 15px;
+  color: $azure27;
+  overflow-wrap: anywhere;
+}
+
+.specContainer {
+  padding-top: 28px;
+  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  .specRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 16px;
+    border: 1px solid $grey91;
+    border-radius: 12px;
+    padding: 12px 16px;
+    .catTitle {
+      font-family: $inter;
+      font-weight: 400;
+      font-size: 14px;
+      color: $grey46;
+      flex: 0 0 200px;
+    }
+    .prodTitle {
+      font-family: $inter;
+      font-weight: 600;
+      font-size: 14px;
+      color: $azure16;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
+.rightSide{
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 513px;
+  min-width: 0;
+  width: 100%;
+  max-width: 513px;
+  gap: 16px;
+}
+
+.rightSideUpper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid $grey91;
+  border-radius: 14px;
+  padding: 31px 26px 26px;
+}
+
+.productTitle {
+  font-family: $inter;
+  font-weight: 700;
+  font-size: 29px;
+  color: $azure12;
+  overflow-wrap: anywhere;
+}
+
+.priceNcount {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  .productPrice {
+    font-family: $inter;
+    font-weight: 800;
+    font-size: 36px;
+    color: $azure12;
+  }
+  .productCount {
+    font-family: $inter;
+    font-weight: 600;
+    font-size: 13px;
+    color: green;
+  }
+}
+
+.cartButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background-color: $grey95;
+  color: $azure52;
+}
+
+.rightSideLower {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid $grey91;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.storeContainer {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+
+  .storeTitle {
+    font-family: $inter;
+    font-weight: 700;
+    font-size: 14px;
+    color: $azure12;
+    overflow-wrap: anywhere;
+  }
+}
+
+.storeButton {
+  flex-shrink: 0;
+  color: $azure27;
+  background-color: white;
+}
+
+@media (max-width: 900px) {
+  .productMainContainer {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .leftSide,
+  .rightSide {
+    flex-basis: auto;
+    max-width: 594px;
+  }
+}
+
+@media (max-width: 480px) {
+  .specContainer .specRow {
+    flex-direction: column;
+
+    .catTitle {
+      flex-basis: auto;
+    }
+  }
+}
