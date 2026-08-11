@@ -62,14 +62,14 @@ export function Header() {
           >
             <Profile aria-hidden="true" focusable="false" />
           </Link>
-          <Button
+          <Link
             className={cls.toCart}
-            type="button"
+            to="/cart"
             aria-label="Открыть корзину"
             title="Открыть корзину"
           >
             <Cart aria-hidden="true" focusable="false" />
-          </Button>
+          </Link>
         </div>
       </div>
       <nav aria-label="Основная навигация" className={cls.bot}>

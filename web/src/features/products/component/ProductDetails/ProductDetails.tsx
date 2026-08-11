@@ -9,10 +9,12 @@ import cls from './ProductDetails.module.scss'
 
 type ProductDetailsProps = {
   product: ProductDetailsType
+  onAddToCart: () => void
 }
 
 export function ProductDetails({
   product,
+  onAddToCart,
 }: ProductDetailsProps) {
   const images = [...(product.images ?? [])].sort(
     (firstImage, secondImage) =>
@@ -116,6 +118,7 @@ export function ProductDetails({
             type="button"
             disabled={product.stock === 0}
             className={cls.cartButton}
+            onClick={onAddToCart}
           >
             <Cart
               className={cls.cartSvg}

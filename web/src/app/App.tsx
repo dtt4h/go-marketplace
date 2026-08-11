@@ -9,6 +9,7 @@ import { ProfilePage } from '../pages/ProfilePage'
 import { CatalogPage } from '../pages/CatalogPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { ProductPage } from '../pages/ProductPage'
+import { CartPage } from '../pages/CartPage'
 import { MainLayout } from './layout/MainLayout'
 
 function App() {
@@ -33,6 +34,10 @@ function App() {
         <Route
           path="products/:productId"
           element={<ProductPage />}
+        />
+        <Route
+          path="cart"
+          element={<CartPage />}
         />
         <Route
           path="auth"
