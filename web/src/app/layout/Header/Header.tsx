@@ -3,9 +3,17 @@ import { Link } from 'react-router-dom'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Profile } from '../../../shared/assets/icons/Profile'
 import { Cart } from '../../../shared/assets/icons/Cart'
+import { useCartStore } from '../../../features/cart/store/cartStore'
 import cls from './Header.module.scss'
 
 export function Header() {
+  const cartItemsCount = useCartStore((state) =>
+    state.items.reduce(
+      (total, item) => total + item.quantity,
+      0,
+    ),
+  )
+
   function handleSearchSubmit(
     event: FormEvent<HTMLFormElement>,
   ): void {
@@ -65,10 +73,15 @@ export function Header() {
           <Link
             className={cls.toCart}
             to="/cart"
-            aria-label="Открыть корзину"
+            aria-label={`Открыть корзину, товаров: ${cartItemsCount}`}
             title="Открыть корзину"
           >
             <Cart aria-hidden="true" focusable="false" />
+            {cartItemsCount > 0 && (
+              <span className={cls.cartBadge} aria-hidden="true">
+                {cartItemsCount}
+              </span>
+            )}
           </Link>
         </div>
       </div>

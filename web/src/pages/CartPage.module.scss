@@ -1,0 +1,65 @@
+@use '../shared/styles/global.scss' as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px 65px;
+}
+
+.title {
+  font-family: $inter;
+  font-weight: 700;
+  font-size: 30px;
+  color: $azure12;
+}
+
+.content {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
+  gap: 28px;
+}
+
+.leftColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 14px;
+}
+
+.continueLink,
+.continueLink:link,
+.continueLink:visited {
+  align-self: flex-start;
+  width: fit-content;
+  font-family: $inter;
+  font-weight: 600;
+  font-size: 14px;
+  color: $azure52;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.continueLink {
+  &:hover {
+    transform: scale(1.01);
+  }
+}
+
+@media (max-width: 900px) {
+  .content {
+    flex-direction: column;
+  }
+
+  .leftColumn {
+    width: 100%;
+  }
+}
