@@ -1,0 +1,98 @@
+@use '../../../../shared/styles/global.scss' as *;
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 340px;
+  width: 100%;
+  gap: 11px;
+  padding: 22px;
+  max-width: 340px;
+  min-height: 348px;
+  border: 1px solid $grey91;
+  border-radius: 14px;
+  font-family: $inter;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 19px;
+  color: $azure12;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  border-bottom: 1px solid $grey953;
+  padding-bottom: 11px;
+}
+
+.detailsRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.label {
+  font-weight: 400;
+  font-size: 14px;
+  color: $azure35;
+}
+
+.value {
+  font-weight: 600;
+  font-size: 14px;
+  color: $azure16;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.included {
+  font-weight: 600;
+  text-align: right;
+  color: green;
+}
+
+.totalRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-family: $inter;
+}
+
+.totalLabel {
+  font-weight: 700;
+  font-size: 16px;
+  color: $azure12;
+}
+
+.totalPrice {
+  font-weight: 800;
+  font-size: 26px;
+  color: $azure12;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.checkoutButton {
+  width: 100%;
+}
+
+.notice {
+  display: block;
+  font-family: $inter;
+  font-weight: 400;
+  font-size: 12px;
+  color: $azure65;
+}
+
+@media (max-width: 900px) {
+  .summary {
+    flex-basis: auto;
+    max-width: none;
+  }
+}
