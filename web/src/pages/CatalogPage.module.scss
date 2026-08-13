@@ -14,3 +14,10 @@
   grid-template-columns: repeat(4, 273px);
   gap: 20px;
 }
+
+.emptyMessage {
+  padding: 40px 0;
+  font-family: $inter;
+  font-size: 16px;
+  color: $grey46;
+}

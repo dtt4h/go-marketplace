@@ -1,5 +1,9 @@
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import {
+  Link,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Profile } from '../../../shared/assets/icons/Profile'
 import { Cart } from '../../../shared/assets/icons/Cart'
@@ -7,6 +11,9 @@ import { useCartStore } from '../../../features/cart/store/cartStore'
 import cls from './Header.module.scss'
 
 export function Header() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const searchFromUrl = searchParams.get('search') ?? ''
   const cartItemsCount = useCartStore((state) =>
     state.items.reduce(
       (total, item) => total + item.quantity,
@@ -18,6 +25,18 @@ export function Header() {
     event: FormEvent<HTMLFormElement>,
   ): void {
     event.preventDefault()
+
+    const formData = new FormData(event.currentTarget)
+    const search = String(formData.get('search') ?? '').trim()
+    const nextSearchParams = new URLSearchParams()
+
+    if (search) {
+      nextSearchParams.set('search', search)
+    }
+
+    const query = nextSearchParams.toString()
+
+    navigate(query ? `/catalog?${query}` : '/catalog')
   }
 
   return (
@@ -43,8 +62,10 @@ export function Header() {
           </label>
           <input 
             id="catalog-search"
+            key={searchFromUrl}
             name="search"
             type="search"
+            defaultValue={searchFromUrl}
             className={cls.searchInput}
             placeholder='Поиск по антиквариату: комод, монета, икона…'
           />
