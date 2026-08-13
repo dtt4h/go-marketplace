@@ -6,19 +6,23 @@ type InputProps = ComponentProps<'input'> & {
   id: string
   label: string
   error?: string
+  containerClassName?: string
 }
 
 export function Input({
   id,
   label,
   error,
+  containerClassName,
   className,
   ...inputProps
 }: InputProps) {
   const errorId = `${id}-error`
 
   return (
-    <div className={cls.inputContainer}>
+    <div
+      className={`${cls.inputContainer} ${containerClassName ?? ''}`}
+    >
       <label
         className={cls.inputLabel}
         htmlFor={id}

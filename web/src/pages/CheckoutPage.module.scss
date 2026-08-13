@@ -1,0 +1,79 @@
+@use '../shared/styles/global.scss' as *;
+
+.page,
+.emptyPage {
+  width: 100%;
+  margin: 0 auto;
+  padding: 26px 24px 64px;
+  font-family: $inter;
+}
+
+.page {
+  max-width: 1000px;
+}
+
+.emptyPage {
+  max-width: 1200px;
+}
+
+.title {
+  margin-bottom: 22px;
+  font-size: 30px;
+  font-weight: 700;
+  color: $azure12;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 28px;
+}
+
+.formColumn {
+  min-width: 0;
+}
+
+.preparedMessage {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid $green38;
+  border-radius: 10px;
+  background-color: $green93;
+  color: $green38;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.emptyMessage {
+  margin-bottom: 18px;
+  color: $grey46;
+  font-size: 16px;
+}
+
+.catalogLink,
+.catalogLink:link,
+.catalogLink:visited {
+  display: inline-flex;
+  padding: 13px 22px;
+  border-radius: 10px;
+  background-color: $azure52;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 800px) {
+  .content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .page,
+  .emptyPage {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}

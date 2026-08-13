@@ -10,6 +10,7 @@ import { CatalogPage } from '../pages/CatalogPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { ProductPage } from '../pages/ProductPage'
 import { CartPage } from '../pages/CartPage'
+import { CheckoutPage } from '../pages/CheckoutPage'
 import { MainLayout } from './layout/MainLayout'
 
 function App() {
@@ -38,6 +39,10 @@ function App() {
         <Route
           path="cart"
           element={<CartPage />}
+        />
+        <Route
+          path="checkout"
+          element={<CheckoutPage />}
         />
         <Route
           path="auth"

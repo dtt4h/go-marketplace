@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom'
+
 import { Button } from '../../../../shared/ui/Button/Button'
 import { useCartStore } from '../../store/cartStore'
 import {
@@ -8,6 +10,7 @@ import {
 import cls from './CartSummary.module.scss'
 
 export function CartSummary() {
+  const navigate = useNavigate()
   const items = useCartStore((state) => state.items)
   const totals = calculateCartTotals(items)
 
@@ -50,7 +53,11 @@ export function CartSummary() {
         </p>
       </div>
 
-      <Button className={cls.checkoutButton} type="button">
+      <Button
+        className={cls.checkoutButton}
+        type="button"
+        onClick={() => navigate('/checkout')}
+      >
         Оформить заказ
       </Button>
 
