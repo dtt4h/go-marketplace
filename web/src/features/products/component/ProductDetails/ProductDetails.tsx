@@ -110,13 +110,6 @@ export function ProductDetails({
           <Button
             type="button"
             disabled={product.stock === 0}
-            className={cls.buyButton}
-          >
-            Купить сейчас
-          </Button>
-          <Button
-            type="button"
-            disabled={product.stock === 0}
             className={cls.cartButton}
             onClick={onAddToCart}
           >
