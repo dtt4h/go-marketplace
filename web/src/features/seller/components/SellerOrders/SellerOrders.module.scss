@@ -1,0 +1,83 @@
+@use '../../../../shared/styles/global.scss' as *;
+
+.table {
+  overflow: hidden;
+  border: 1px solid $grey91;
+  border-radius: 12px;
+  width: 100%;
+  background: white;
+}
+
+.tableHeader,
+.row {
+  display: grid;
+  grid-template-columns: 110px minmax(220px, 2fr) 1.4fr 1fr 150px;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 20px;
+}
+
+.tableHeader {
+  border-bottom: 1px solid $grey91;
+  background: #f8fafc;
+  color: $azure65;
+  font-family: $inter;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.row {
+  border-bottom: 1px solid $grey953;
+  color: $azure16;
+  font-family: $inter;
+  font-size: 14px;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:hover {
+    background: #f8fafc;
+  }
+}
+
+.orderNumber,
+.total {
+  color: $azure12;
+  font-weight: 700;
+}
+
+.secondary {
+  color: $azure35;
+}
+
+.status {
+  justify-self: start;
+  border-radius: 20px;
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.paid {
+  background: $grey95;
+  color: $azure52;
+}
+
+.shipped {
+  background: #f0eafc;
+  color: #6f42c1;
+}
+
+.delivered {
+  background: $green93;
+  color: $green38;
+}
+
+.emptyState {
+  padding: 32px;
+  color: $grey46;
+  font-family: $inter;
+}
