@@ -1,32 +1,32 @@
 import { useState } from 'react'
 
 import { LogoutButton } from '../features/auth/components/LogoutButton'
-import { useAuthStore } from '../features/auth/store/authStore'
-import { ProfileForm } from '../features/profile/components/ProfileForm'
+import { SellerOrders } from '../features/seller/components/SellerOrders/SellerOrders'
+import { SellerProducts } from '../features/seller/components/SellerProducts/SellerProducts'
+import { StoreSettingsForm } from '../features/seller/components/StoreSettingsForm/StoreSettingsForm'
+import {
+  mockSellerStats,
+  mockSellerStore,
+} from '../features/seller/mocks/seller'
+import type { SellerStore } from '../features/seller/types'
 import { useProfile } from '../features/profile/hooks/useProfile'
-import type { UserProfile } from '../features/profile/types'
-import { OrdersPlaceholder } from '../features/orders/components/OrdersPlaceholder'
+import { Button } from '../shared/ui/Button/Button'
 
 import cls from './ProfilePage.module.scss'
 
-type ProfileSection = 'profile' | 'orders'
+type SellerSection = 'products' | 'orders' | 'settings'
+
+const moneyFormatter = new Intl.NumberFormat('ru-RU')
 
 export function ProfilePage() {
-  const [isEditing, setIsEditing] = useState(false)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState<ProfileSection>('profile')
+  const [activeSection, setActiveSection] =
+    useState<SellerSection>('products')
+  const [store, setStore] =
+    useState<SellerStore>(mockSellerStore)
+  const { profile, isLoading, error } = useProfile()
 
-  const updateAuthUser = useAuthStore(
-    (state) => state.updateUser,
-  )
-  const {
-    profile,
-    isLoading,
-    error,
-    replaceProfile,
-  } = useProfile()
   if (isLoading) {
-    return <p role="status">Загрузка профиля</p>
+    return <p role="status">Загрузка кабинета продавца</p>
   }
 
   if (error) {
@@ -37,90 +37,91 @@ export function ProfilePage() {
     return <p role="alert">Профиль не найден</p>
   }
 
-  const avatarLetter =
-    profile.username.charAt(0).toUpperCase()
-
-  function handleProfileUpdated(
-    updatedProfile: UserProfile,
-  ): void {
-    replaceProfile(updatedProfile)
-    updateAuthUser(updatedProfile)
-    setIsEditing(false)
-    setSuccessMessage('Профиль успешно обновлен')
-  }
+  const avatarLetter = store.name.charAt(0).toUpperCase()
 
   return (
     <main className={cls.wrapper}>
-      <div className={cls.profileHeader}>
+      <header className={cls.profileHeader}>
         <div className={cls.identityContainer}>
-          <div className={cls.avatarContainer}>
-            {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={`Аватар ${profile.username}`}
-              />
-            ) : (
-              <span
-                aria-hidden="true"
-                className={cls.avatarMok}
-              >
-                {avatarLetter}
-              </span>
-            )}
+          <div className={cls.avatarContainer} aria-hidden="true">
+            <span className={cls.avatarMok}>{avatarLetter}</span>
           </div>
           <div className={cls.nameContainer}>
-            <p className={cls.profileName}>
-              {profile.username}
+            <h1 className={cls.profileName}>{store.name}</h1>
+            <p className={cls.profileDesc}>
+              Панель продавца · {profile.email}
             </p>
-            <div className={cls.profileDesc}>
-              <p>{profile.email}</p>
-              <p aria-hidden="true"> · </p>
-              <p>{profile.role}</p>
-            </div>
           </div>
         </div>
+
         <div className={cls.actionContainer}>
-          <LogoutButton/>
+          <Button className={cls.addProductButton} type="button">
+            <span className={cls.addIcon} aria-hidden="true">+</span>
+            Добавить товар
+          </Button>
+          <LogoutButton />
         </div>
-      </div>
-      <nav className={cls.navContainer} aria-label="Разделы личного кабинета">
-          <button
-            className={cls.navButton}
-            type="button"
-            aria-pressed={activeSection === 'orders'}
-            disabled={isEditing}
-            onClick={() => {
-              setSuccessMessage(null)
-              setActiveSection('orders')
-            }}
-          >
-            Мои заказы
-          </button>
-          <button
-            className={cls.navButton}
-            type="button"
-            aria-pressed={activeSection === 'profile'}
-            onClick={() => setActiveSection('profile')}
-          >
-            Профиль
-          </button>
-        </nav>
-      {successMessage && (
-        <p role="status">{successMessage}</p>
-      )}
-      {activeSection === 'profile' ? (
-        <ProfileForm
-        isEditing={isEditing}
-        profile={profile}
-        onEdit={() => {
-          setSuccessMessage(null)
-          setIsEditing(true)
-        }}
-        onUpdated={handleProfileUpdated}
-        onCancel={() => setIsEditing(false)}
-      />
-      ) : (
-        <OrdersPlaceholder />
+      </header>
+
+      <section className={cls.stats} aria-label="Статистика магазина">
+        <article className={cls.statCard}>
+          <p>Активных товаров</p>
+          <strong>{mockSellerStats.activeProducts}</strong>
+        </article>
+        <article className={cls.statCard}>
+          <p>На модерации</p>
+          <strong className={cls.moderationValue}>
+            {mockSellerStats.productsOnModeration}
+          </strong>
+        </article>
+        <article className={cls.statCard}>
+          <p>Заказов в работе</p>
+          <strong className={cls.ordersValue}>
+            {mockSellerStats.activeOrders}
+          </strong>
+        </article>
+        <article className={cls.statCard}>
+          <p>Выручка за месяц</p>
+          <strong>
+            {moneyFormatter.format(mockSellerStats.monthlyRevenue)} ₽
+          </strong>
+        </article>
+      </section>
+
+      <nav
+        className={cls.navContainer}
+        aria-label="Разделы кабинета продавца"
+      >
+        <button
+          className={cls.navButton}
+          type="button"
+          aria-pressed={activeSection === 'products'}
+          onClick={() => setActiveSection('products')}
+        >
+          Товары
+        </button>
+        <button
+          className={cls.navButton}
+          type="button"
+          aria-pressed={activeSection === 'orders'}
+          onClick={() => setActiveSection('orders')}
+        >
+          Заказы магазина
+        </button>
+        <button
+          className={cls.navButton}
+          type="button"
+          aria-pressed={activeSection === 'settings'}
+          onClick={() => setActiveSection('settings')}
+        >
+          Настройки магазина
+        </button>
+      </nav>
+
+      {activeSection === 'products' && <SellerProducts />}
+      {activeSection === 'orders' && <SellerOrders />}
+      {activeSection === 'settings' && (
+        <StoreSettingsForm store={store} onSave={setStore} />
       )}
     </main>
   )
