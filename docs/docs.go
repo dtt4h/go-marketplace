@@ -15,6 +15,43 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/forgot-password": {
+            "post": {
+                "description": "Generates a reset token for the given email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Request password reset",
+                "parameters": [
+                    {
+                        "description": "Email address",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ForgotPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticates user and returns access + refresh tokens",
@@ -35,7 +72,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.LoginRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.LoginRequest"
                         }
                     }
                 ],
@@ -43,13 +80,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.AuthResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.AuthResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -74,7 +111,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -94,13 +131,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.RefreshResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.RefreshResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -126,7 +163,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.RegisterRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.RegisterRequest"
                         }
                     }
                 ],
@@ -134,19 +171,287 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/dtos.AuthResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.AuthResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/reset-password": {
+            "post": {
+                "description": "Resets password using the reset token from forgot-password flow",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Reset password using token",
+                "parameters": [
+                    {
+                        "description": "Reset token and new password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all items in the current user's shopping cart",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Get current user's cart",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes all items from the current user's cart",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Clear cart",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/items": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a product to the current user's cart (or updates quantity if already present)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Add item to cart",
+                "parameters": [
+                    {
+                        "description": "Product ID and quantity",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.AddCartItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/items/{itemID}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes a specific item from the current user's cart",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Remove item from cart",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Cart item ID",
+                        "name": "itemID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates the quantity of a specific cart item",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Update cart item quantity",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Cart item ID",
+                        "name": "itemID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New quantity",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateCartItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -154,11 +459,6 @@ const docTemplate = `{
         },
         "/orders": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Creates an order from provided items, decrements stock",
                 "consumes": [
                     "application/json"
@@ -177,7 +477,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.CreateOrderRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CreateOrderRequest"
                         }
                     }
                 ],
@@ -185,19 +485,13 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/dtos.OrderResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -235,13 +529,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httputil.PaginatedResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -275,25 +569,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.OrderResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -332,19 +626,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httputil.PaginatedResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -382,7 +676,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.UpdateOrderStatusRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateOrderStatusRequest"
                         }
                     }
                 ],
@@ -390,31 +684,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.OrderResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -445,7 +739,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.CreatePaymentRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CreatePaymentRequest"
                         }
                     }
                 ],
@@ -453,31 +747,75 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/dtos.PaymentResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.PaymentResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "List current user's payments",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 20, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -503,7 +841,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.WebhookRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.WebhookRequest"
                         }
                     }
                 ],
@@ -520,13 +858,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -559,19 +897,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.PaymentResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.PaymentResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -605,25 +943,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.PaymentResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.PaymentResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -693,13 +1031,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httputil.PaginatedResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -728,7 +1066,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.CreateProductRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CreateProductRequest"
                         }
                     }
                 ],
@@ -736,25 +1074,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ProductResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -776,8 +1114,54 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/dtos.CategoryResponse"
+                                "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CategoryResponse"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/products/images/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an image from a product (seller only)",
+                "tags": [
+                    "products"
+                ],
+                "summary": "Delete a product image",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Image ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -805,19 +1189,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ProductResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -849,19 +1233,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -897,7 +1281,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.UpdateProductRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateProductRequest"
                         }
                     }
                 ],
@@ -905,31 +1289,157 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ProductResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{id}/images": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uploads an image file and associates it with a product (seller only)",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Upload an image for a product",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Product ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Image file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductImageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{id}/images/presigned": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a presigned URL for direct upload to S3 (seller only)",
+                "tags": [
+                    "products"
+                ],
+                "summary": "Get presigned upload URL",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Product ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Content-Type of the file",
+                        "name": "content_type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -967,7 +1477,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.ModerateProductRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ModerateProductRequest"
                         }
                     }
                 ],
@@ -975,31 +1485,78 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ProductResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/stores/{id}/products": {
+            "get": {
+                "description": "Returns paginated list of active products for a specific store",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "List products by store ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Store ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 20, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -1023,19 +1580,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ProfileResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProfileResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -1063,7 +1620,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.UpdateProfileRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -1071,25 +1628,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dtos.ProfileResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProfileResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -1120,7 +1677,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.CreateStoreRequest"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CreateStoreRequest"
                         }
                     }
                 ],
@@ -1128,25 +1685,80 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/dtos.StoreResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.StoreResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/httputil.ErrorResponse"
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates store details (name, description, logo)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update store",
+                "parameters": [
+                    {
+                        "description": "Store fields to update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateStoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.StoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse"
                         }
                     }
                 }
@@ -1154,24 +1766,107 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dtos.AuthResponse": {
+        "github_com_dtt4h_go-marketplace_internal_database_sqlc.OrderStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "paid",
+                "shipped",
+                "delivered",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "OrderStatusPending",
+                "OrderStatusPaid",
+                "OrderStatusShipped",
+                "OrderStatusDelivered",
+                "OrderStatusCancelled"
+            ]
+        },
+        "github_com_dtt4h_go-marketplace_internal_database_sqlc.ProductStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "active",
+                "rejected",
+                "archived"
+            ],
+            "x-enum-varnames": [
+                "ProductStatusPending",
+                "ProductStatusActive",
+                "ProductStatusRejected",
+                "ProductStatusArchived"
+            ]
+        },
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.AddCartItemRequest": {
+            "type": "object",
+            "properties": {
+                "product_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.AuthResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/dtos.UserResponse"
+                    "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UserResponse"
                 }
             }
         },
-        "dtos.CategoryResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.CartItemResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "price": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "stock": {
+                    "type": "integer"
+                },
+                "store_name": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartItemResponse"
+                    }
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.CategoryResponse": {
             "type": "object",
             "properties": {
                 "children": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dtos.CategoryResponse"
+                        "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CategoryResponse"
                     }
                 },
                 "id": {
@@ -1188,7 +1883,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.CreateOrderRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.CreateOrderRequest": {
             "type": "object",
             "properties": {
                 "address": {
@@ -1197,12 +1892,15 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dtos.OrderItemRequest"
+                        "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderItemRequest"
                     }
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
-        "dtos.CreatePaymentRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.CreatePaymentRequest": {
             "type": "object",
             "properties": {
                 "order_id": {
@@ -1210,7 +1908,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.CreateProductRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.CreateProductRequest": {
             "type": "object",
             "properties": {
                 "category_id": {
@@ -1236,7 +1934,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.CreateStoreRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.CreateStoreRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -1250,7 +1948,15 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.LoginRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.ForgotPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -1261,10 +1967,18 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ModerateProductRequest": {
-            "type": "object"
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.ModerateProductRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_database_sqlc.ProductStatus"
+                }
+            }
         },
-        "dtos.OrderItemRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.OrderItemRequest": {
             "type": "object",
             "properties": {
                 "product_id": {
@@ -1275,7 +1989,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.OrderItemResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.OrderItemResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -1295,7 +2009,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.OrderResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.OrderResponse": {
             "type": "object",
             "properties": {
                 "address": {
@@ -1310,7 +2024,7 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dtos.OrderItemResponse"
+                        "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderItemResponse"
                     }
                 },
                 "status": {
@@ -1321,7 +2035,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.PaymentResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.PaymentResponse": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -1356,7 +2070,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ProductImageResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.ProductImageResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -1370,11 +2084,11 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ProductResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse": {
             "type": "object",
             "properties": {
                 "category": {
-                    "$ref": "#/definitions/dtos.CategoryResponse"
+                    "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CategoryResponse"
                 },
                 "created_at": {
                     "type": "string"
@@ -1388,7 +2102,7 @@ const docTemplate = `{
                 "images": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dtos.ProductImageResponse"
+                        "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductImageResponse"
                     }
                 },
                 "price": {
@@ -1401,7 +2115,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "store": {
-                    "$ref": "#/definitions/dtos.ProductStoreInfo"
+                    "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductStoreInfo"
                 },
                 "title": {
                     "type": "string"
@@ -1411,7 +2125,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ProductStoreInfo": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.ProductStoreInfo": {
             "type": "object",
             "properties": {
                 "description": {
@@ -1425,7 +2139,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.ProfileResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.ProfileResponse": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -1451,7 +2165,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.RefreshResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.RefreshResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -1459,7 +2173,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.RegisterRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.RegisterRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -1476,7 +2190,18 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.StoreResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.ResetPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.StoreResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1499,10 +2224,23 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.UpdateOrderStatusRequest": {
-            "type": "object"
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateCartItemRequest": {
+            "type": "object",
+            "properties": {
+                "quantity": {
+                    "type": "integer"
+                }
+            }
         },
-        "dtos.UpdateProductRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateOrderStatusRequest": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/github_com_dtt4h_go-marketplace_internal_database_sqlc.OrderStatus"
+                }
+            }
+        },
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateProductRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -1519,7 +2257,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.UpdateProfileRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -1533,7 +2271,21 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.UserResponse": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateStoreRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "logo_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.UserResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -1550,7 +2302,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.WebhookRequest": {
+        "github_com_dtt4h_go-marketplace_internal_server_dtos.WebhookRequest": {
             "type": "object",
             "properties": {
                 "order_id": {
@@ -1564,7 +2316,7 @@ const docTemplate = `{
                 }
             }
         },
-        "httputil.APIError": {
+        "github_com_dtt4h_go-marketplace_pkg_httputil.APIError": {
             "type": "object",
             "properties": {
                 "code": {
@@ -1576,15 +2328,15 @@ const docTemplate = `{
                 }
             }
         },
-        "httputil.ErrorResponse": {
+        "github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/httputil.APIError"
+                    "$ref": "#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.APIError"
                 }
             }
         },
-        "httputil.PaginatedResponse": {
+        "github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse": {
             "type": "object",
             "properties": {
                 "items": {},

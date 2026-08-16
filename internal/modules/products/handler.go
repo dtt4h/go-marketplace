@@ -294,6 +294,40 @@ func (h *ProductHandler) ModerateProduct(w http.ResponseWriter, r *http.Request)
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// ListProductsByStore godoc
+// @Summary      List products by store ID
+// @Description  Returns paginated list of active products for a specific store
+// @Tags         products
+// @Produce      json
+// @Param        id   path  int  true  "Store ID"
+// @Param        page   query  int  false  "Page number (default 1)"
+// @Param        limit  query  int  false  "Items per page (default 20, max 100)"
+// @Success      200  {object}  httputil.PaginatedResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Router       /stores/{id}/products [get]
+func (h *ProductHandler) ListProductsByStore(w http.ResponseWriter, r *http.Request) {
+	storeID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		httputil.ValidationError(w, "invalid store id", nil)
+		return
+	}
+
+	page, limit := httputil.ParsePagination(r)
+
+	items, total, err := h.service.ListProductsByStore(r.Context(), storeID, page, limit)
+	if err != nil {
+		httputil.InternalError(w, err.Error())
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, httputil.PaginatedResponse{
+		Items: items,
+		Total: int(total),
+		Page:  page,
+		Limit: limit,
+	})
+}
+
 func parseOptionalInt64(s string) *int64 {
 	if s == "" {
 		return nil

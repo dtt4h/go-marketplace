@@ -31,6 +31,7 @@ type OrderFetcher interface {
 type PaymentService interface {
 	CreatePayment(ctx context.Context, userID int64, req dtos.CreatePaymentRequest) (dtos.PaymentResponse, error)
 	GetPayment(ctx context.Context, userID, paymentID int64) (dtos.PaymentResponse, error)
+	ListPaymentsByUser(ctx context.Context, userID int64, page, limit int) ([]dtos.PaymentListItem, int64, error)
 	HandleWebhook(ctx context.Context, req dtos.WebhookRequest) error
 	RefundPayment(ctx context.Context, userID, paymentID int64) (dtos.PaymentResponse, error)
 }
@@ -113,17 +114,23 @@ func (s *paymentService) GetPayment(ctx context.Context, userID, paymentID int64
 	return dtos.ToPaymentResponse(payment), nil
 }
 
-func (s *paymentService) HandleWebhook(ctx context.Context, req dtos.WebhookRequest) error {
-	var status db.PaymentStatus
+func validateWebhookRequest(req dtos.WebhookRequest) (db.PaymentStatus, error) {
 	switch req.Status {
 	case "succeeded":
-		status = db.PaymentStatusSucceeded
+		return db.PaymentStatusSucceeded, nil
 	case "failed":
-		status = db.PaymentStatusFailed
+		return db.PaymentStatusFailed, nil
 	case "refunded":
-		status = db.PaymentStatusRefunded
+		return db.PaymentStatusRefunded, nil
 	default:
-		return ErrInvalidWebhook
+		return "", ErrInvalidWebhook
+	}
+}
+
+func (s *paymentService) HandleWebhook(ctx context.Context, req dtos.WebhookRequest) error {
+	status, err := validateWebhookRequest(req)
+	if err != nil {
+		return err
 	}
 
 	payment, err := s.repo.GetPaymentByOrderID(ctx, req.OrderID)
@@ -186,4 +193,22 @@ func (s *paymentService) RefundPayment(ctx context.Context, userID, paymentID in
 	}
 
 	return dtos.ToPaymentResponse(updated), nil
+}
+
+func (s *paymentService) ListPaymentsByUser(ctx context.Context, userID int64, page, limit int) ([]dtos.PaymentListItem, int64, error) {
+	payments, total, err := s.repo.ListPaymentsByUserID(ctx, userID, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list payments by user: %w", err)
+	}
+
+	if len(payments) == 0 {
+		return []dtos.PaymentListItem{}, 0, nil
+	}
+
+	result := make([]dtos.PaymentListItem, 0, len(payments))
+	for _, p := range payments {
+		result = append(result, dtos.ToPaymentListItem(p))
+	}
+
+	return result, total, nil
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	_ "github.com/dtt4h/go-marketplace/internal/server/dtos"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
 	"github.com/dtt4h/go-marketplace/pkg/pgutil"

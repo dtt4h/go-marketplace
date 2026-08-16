@@ -81,6 +81,8 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 			httputil.NotFound(w, err.Error())
 		case errors.Is(err, ErrUsernameTaken):
 			httputil.Conflict(w, err.Error())
+		case errors.Is(err, ErrUsernameRequired):
+			httputil.ValidationError(w, err.Error(), nil)
 		default:
 			httputil.InternalError(w, err.Error())
 		}
@@ -130,4 +132,44 @@ func (h *UserHandler) CreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputil.JSON(w, http.StatusCreated, resp)
+}
+
+// UpdateStore godoc
+// @Summary      Update store
+// @Description  Updates store details (name, description, logo)
+// @Tags         users
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.UpdateStoreRequest  true  "Store fields to update"
+// @Success      200  {object}  dtos.StoreResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /users/me/store [patch]
+func (h *UserHandler) UpdateStore(w http.ResponseWriter, r *http.Request) {
+	userID, ok := mw.UserIDFromCtx(r.Context())
+	if !ok {
+		httputil.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	var req dtos.UpdateStoreRequest
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.ValidationError(w, "invalid request body", nil)
+		return
+	}
+
+	resp, err := h.service.UpdateStore(r.Context(), userID, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrStoreNotFound):
+			httputil.NotFound(w, err.Error())
+		default:
+			httputil.InternalError(w, err.Error())
+		}
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, resp)
 }

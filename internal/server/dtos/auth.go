@@ -36,6 +36,15 @@ type RefreshResponse struct {
 	RefreshToken string `json:"-"`
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+type ResetPasswordRequest struct {
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
 func ToUserResponse(u db.User) UserResponse {
 	return UserResponse{
 		ID:       u.ID,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
@@ -22,11 +23,19 @@ var (
 	ErrInvalidStatusTrans = errors.New("invalid status transition")
 	ErrInvalidQuantity    = errors.New("quantity must be greater than zero")
 	ErrProductNotFound    = errors.New("product not found")
+	ErrAddressRequired    = errors.New("address is required")
+	ErrInvalidProductID   = errors.New("invalid product id")
+	ErrOrderAlreadyPaid   = errors.New("order is already paid, cannot cancel")
 )
 
 type storeResolver interface {
 	GetStoreOwnerByStoreID(ctx context.Context, storeID int64) (int64, error)
 	GetUserByID(ctx context.Context, id int64) (db.User, error)
+}
+
+type paymentRefunder interface {
+	RefundPayment(ctx context.Context, userID, paymentID int64) (dtos.PaymentResponse, error)
+	GetPayment(ctx context.Context, userID, paymentID int64) (dtos.PaymentResponse, error)
 }
 
 // OrderService defines business logic for order operations.
@@ -39,14 +48,16 @@ type OrderService interface {
 }
 
 type orderService struct {
-	repo   OrderRepository
-	solver storeResolver
-	pool   *pgxpool.Pool
+	repo        OrderRepository
+	solver      storeResolver
+	paymentRef  paymentRefunder
+	pool        *pgxpool.Pool
+	log         *slog.Logger
 }
 
 // NewOrderService creates a new OrderService.
-func NewOrderService(repo OrderRepository, solver storeResolver, pool *pgxpool.Pool) OrderService {
-	return &orderService{repo: repo, solver: solver, pool: pool}
+func NewOrderService(repo OrderRepository, solver storeResolver, paymentRef paymentRefunder, pool *pgxpool.Pool, log *slog.Logger) OrderService {
+	return &orderService{repo: repo, solver: solver, paymentRef: paymentRef, pool: pool, log: log}
 }
 
 type orderItem struct {
@@ -55,9 +66,27 @@ type orderItem struct {
 	price     pgtype.Numeric
 }
 
-func (s *orderService) CreateOrder(ctx context.Context, userID int64, req dtos.CreateOrderRequest) (dtos.OrderResponse, error) {
+func validateCreateOrderRequest(req dtos.CreateOrderRequest) error {
 	if len(req.Items) == 0 {
-		return dtos.OrderResponse{}, ErrOrderEmpty
+		return ErrOrderEmpty
+	}
+	if req.Address == "" {
+		return ErrAddressRequired
+	}
+	for _, item := range req.Items {
+		if item.ProductID <= 0 {
+			return ErrInvalidProductID
+		}
+		if item.Quantity <= 0 {
+			return ErrInvalidQuantity
+		}
+	}
+	return nil
+}
+
+func (s *orderService) CreateOrder(ctx context.Context, userID int64, req dtos.CreateOrderRequest) (dtos.OrderResponse, error) {
+	if err := validateCreateOrderRequest(req); err != nil {
+		return dtos.OrderResponse{}, err
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -270,30 +299,73 @@ func (s *orderService) UpdateOrderStatus(ctx context.Context, userID int64, orde
 		return dtos.OrderResponse{}, ErrForbidden
 	}
 
-	var validTransitions map[db.OrderStatus][]db.OrderStatus
-	if isSeller && !isBuyer {
-		validTransitions = map[db.OrderStatus][]db.OrderStatus{
-			db.OrderStatusPending: {db.OrderStatusCancelled},
-			db.OrderStatusPaid:    {db.OrderStatusShipped, db.OrderStatusCancelled},
-			db.OrderStatusShipped: {db.OrderStatusDelivered},
+	if req.Status == db.OrderStatusCancelled {
+		if order.Status == db.OrderStatusPending {
+			// pending: покупатель или продавец может отменить
+		} else if order.Status == db.OrderStatusPaid && isBuyer && !isSeller {
+			// paid: только покупатель может отменить (продавец может shipped/cancelled)
+		} else if order.Status == db.OrderStatusPaid && isSeller && !isBuyer {
+			// paid: продавец может отменить
+		} else {
+			return dtos.OrderResponse{}, ErrInvalidStatusTrans
 		}
 	} else {
-		validTransitions = map[db.OrderStatus][]db.OrderStatus{
-			db.OrderStatusPending: {db.OrderStatusCancelled},
-			db.OrderStatusPaid:    {db.OrderStatusCancelled},
+		// Не отмена — проверяем обычные переходы
+		var validTransitions map[db.OrderStatus][]db.OrderStatus
+		if isSeller && !isBuyer {
+			validTransitions = map[db.OrderStatus][]db.OrderStatus{
+				db.OrderStatusPending: {db.OrderStatusCancelled},
+				db.OrderStatusPaid:    {db.OrderStatusShipped, db.OrderStatusCancelled},
+				db.OrderStatusShipped: {db.OrderStatusDelivered},
+			}
+		} else {
+			validTransitions = map[db.OrderStatus][]db.OrderStatus{
+				db.OrderStatusPending: {db.OrderStatusCancelled},
+				db.OrderStatusPaid:    {db.OrderStatusCancelled},
+			}
+		}
+
+		prevTransitions := validTransitions[order.Status]
+		allowed := false
+		for _, st := range prevTransitions {
+			if st == req.Status {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return dtos.OrderResponse{}, ErrInvalidStatusTrans
 		}
 	}
 
-	prevTransitions := validTransitions[order.Status]
-	allowed := false
-	for _, st := range prevTransitions {
-		if st == req.Status {
-			allowed = true
-			break
+	// Отмена заказа
+	if req.Status == db.OrderStatusCancelled {
+		// Возврат товара на склад
+		orderItems, err := s.repo.GetOrderItemsByOrderID(ctx, orderID)
+		if err != nil {
+			return dtos.OrderResponse{}, fmt.Errorf("get order items for stock return: %w", err)
 		}
-	}
-	if !allowed {
-		return dtos.OrderResponse{}, ErrInvalidStatusTrans
+
+		for _, oi := range orderItems {
+			_, err := s.repo.IncrementProductStock(ctx, db.IncrementProductStockParams{
+				ID:    oi.ProductID,
+				Stock: oi.Quantity,
+			})
+			if err != nil {
+				return dtos.OrderResponse{}, fmt.Errorf("increment stock for product %d: %w", oi.ProductID, err)
+			}
+		}
+
+		// Если заказ оплачен — делаем возврат средств
+		if order.Status == db.OrderStatusPaid {
+			payment, err := s.repo.GetPaymentByOrderID(ctx, orderID)
+			if err == nil {
+				_, refundErr := s.paymentRef.RefundPayment(ctx, order.UserID, payment.ID)
+				if refundErr != nil {
+					s.log.Warn("refund failed for cancelled order", "order_id", orderID, "error", refundErr)
+				}
+			}
+		}
 	}
 
 	updated, err := s.repo.UpdateOrderStatus(ctx, db.UpdateOrderStatusParams{

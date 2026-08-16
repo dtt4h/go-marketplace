@@ -29,6 +29,16 @@ type WebhookRequest struct {
 	Status            string `json:"status"`
 }
 
+type PaymentListItem struct {
+	ID        int64     `json:"id"`
+	OrderID   int64     `json:"order_id"`
+	Amount    string    `json:"amount"`
+	Currency  string    `json:"currency"`
+	Status    string    `json:"status"`
+	Provider  string    `json:"provider"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 func ToPaymentResponse(p db.Payment) PaymentResponse {
 	resp := PaymentResponse{
 		ID:       p.ID,
@@ -46,4 +56,16 @@ func ToPaymentResponse(p db.Payment) PaymentResponse {
 	}
 
 	return resp
+}
+
+func ToPaymentListItem(p db.Payment) PaymentListItem {
+	return PaymentListItem{
+		ID:        p.ID,
+		OrderID:   p.OrderID,
+		Amount:    NumericToStr(p.Amount),
+		Currency:  p.Currency,
+		Status:    string(p.Status),
+		Provider:  p.Provider,
+		CreatedAt: p.CreatedAt.Time,
+	}
 }

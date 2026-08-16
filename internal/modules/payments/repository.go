@@ -2,6 +2,7 @@ package payments
 
 import (
 	"context"
+	"fmt"
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,6 +14,7 @@ type PaymentRepository interface {
 	GetPayment(ctx context.Context, id int64) (db.Payment, error)
 	GetPaymentByOrderID(ctx context.Context, orderID int64) (db.Payment, error)
 	UpdatePaymentStatus(ctx context.Context, arg db.UpdatePaymentStatusParams) (db.Payment, error)
+	ListPaymentsByUserID(ctx context.Context, userID int64, page, limit int) ([]db.Payment, int64, error)
 }
 
 type paymentRepository struct {
@@ -39,4 +41,24 @@ func (r *paymentRepository) GetPaymentByOrderID(ctx context.Context, orderID int
 
 func (r *paymentRepository) UpdatePaymentStatus(ctx context.Context, arg db.UpdatePaymentStatusParams) (db.Payment, error) {
 	return r.queries.UpdatePaymentStatus(ctx, arg)
+}
+
+func (r *paymentRepository) ListPaymentsByUserID(ctx context.Context, userID int64, page, limit int) ([]db.Payment, int64, error) {
+	offset := int32((page - 1) * limit)
+
+	payments, err := r.queries.ListPaymentsByUserID(ctx, db.ListPaymentsByUserIDParams{
+		UserID: userID,
+		Limit:  int32(limit),
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list payments by user: %w", err)
+	}
+
+	count, err := r.queries.ListPaymentsByUserIDCount(ctx, userID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list payments by user count: %w", err)
+	}
+
+	return payments, count, nil
 }

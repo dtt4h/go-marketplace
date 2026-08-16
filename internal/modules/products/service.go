@@ -35,6 +35,7 @@ var validSorts = map[string]bool{
 type ProductService interface {
 	ListCategories(ctx context.Context) ([]dtos.CategoryResponse, error)
 	ListProducts(ctx context.Context, storeID, categoryID *int64, minPrice, maxPrice *string, search *string, sort string, page, limit int) ([]dtos.ProductListItem, int64, error)
+	ListProductsByStore(ctx context.Context, storeID int64, page, limit int) ([]dtos.ProductListItem, int64, error)
 	GetProduct(ctx context.Context, id int64) (dtos.ProductResponse, error)
 	CreateProduct(ctx context.Context, userID int64, req dtos.CreateProductRequest) (dtos.ProductResponse, error)
 	UpdateProduct(ctx context.Context, userID, id int64, req dtos.UpdateProductRequest) (dtos.ProductResponse, error)
@@ -100,6 +101,39 @@ func (s *productService) ListProducts(ctx context.Context, storeID, categoryID *
 	items := make([]dtos.ProductListItem, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, dtos.ToProductListItem(row, imagesByProduct[row.ID]))
+	}
+
+	return items, total, nil
+}
+
+func (s *productService) ListProductsByStore(ctx context.Context, storeID int64, page, limit int) ([]dtos.ProductListItem, int64, error) {
+	rows, total, err := s.repo.ListProductsByStoreID(ctx, storeID, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list products by store: %w", err)
+	}
+
+	if len(rows) == 0 {
+		return []dtos.ProductListItem{}, 0, nil
+	}
+
+	productIDs := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		productIDs = append(productIDs, row.ID)
+	}
+
+	allImages, err := s.repo.ListProductImagesByProductIDs(ctx, productIDs)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list product images batch: %w", err)
+	}
+
+	imagesByProduct := make(map[int64][]db.ProductImage)
+	for _, img := range allImages {
+		imagesByProduct[img.ProductID] = append(imagesByProduct[img.ProductID], img)
+	}
+
+	items := make([]dtos.ProductListItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, dtos.ToProductListItemFromStoreRow(row, imagesByProduct[row.ID]))
 	}
 
 	return items, total, nil

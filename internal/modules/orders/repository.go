@@ -17,8 +17,11 @@ type OrderRepository interface {
 	ListOrdersBySeller(ctx context.Context, userID int64, page, limit int) ([]db.Order, int64, error)
 	UpdateOrderStatus(ctx context.Context, arg db.UpdateOrderStatusParams) (db.Order, error)
 	DecrementProductStock(ctx context.Context, arg db.DecrementProductStockParams) (db.DecrementProductStockRow, error)
+	IncrementProductStock(ctx context.Context, arg db.IncrementProductStockParams) (db.IncrementProductStockRow, error)
 	GetProductStoreID(ctx context.Context, productID int64) (int64, error)
 	CountOrderItems(ctx context.Context, orderID int64) (int64, error)
+	GetOrderItemsByOrderID(ctx context.Context, orderID int64) ([]db.GetOrderItemsByOrderIDRow, error)
+	GetPaymentByOrderID(ctx context.Context, orderID int64) (db.Payment, error)
 }
 
 type orderRepository struct {
@@ -100,4 +103,16 @@ func (r *orderRepository) GetProductStoreID(ctx context.Context, productID int64
 
 func (r *orderRepository) CountOrderItems(ctx context.Context, orderID int64) (int64, error) {
 	return r.queries.CountOrderItems(ctx, orderID)
+}
+
+func (r *orderRepository) IncrementProductStock(ctx context.Context, arg db.IncrementProductStockParams) (db.IncrementProductStockRow, error) {
+	return r.queries.IncrementProductStock(ctx, arg)
+}
+
+func (r *orderRepository) GetOrderItemsByOrderID(ctx context.Context, orderID int64) ([]db.GetOrderItemsByOrderIDRow, error) {
+	return r.queries.GetOrderItemsByOrderID(ctx, orderID)
+}
+
+func (r *orderRepository) GetPaymentByOrderID(ctx context.Context, orderID int64) (db.Payment, error) {
+	return r.queries.GetPaymentByOrderID(ctx, orderID)
 }

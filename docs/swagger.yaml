@@ -1,17 +1,76 @@
 basePath: /api/v1
 definitions:
-  dtos.AuthResponse:
+  github_com_dtt4h_go-marketplace_internal_database_sqlc.OrderStatus:
+    enum:
+    - pending
+    - paid
+    - shipped
+    - delivered
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - OrderStatusPending
+    - OrderStatusPaid
+    - OrderStatusShipped
+    - OrderStatusDelivered
+    - OrderStatusCancelled
+  github_com_dtt4h_go-marketplace_internal_database_sqlc.ProductStatus:
+    enum:
+    - pending
+    - active
+    - rejected
+    - archived
+    type: string
+    x-enum-varnames:
+    - ProductStatusPending
+    - ProductStatusActive
+    - ProductStatusRejected
+    - ProductStatusArchived
+  github_com_dtt4h_go-marketplace_internal_server_dtos.AddCartItemRequest:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  github_com_dtt4h_go-marketplace_internal_server_dtos.AuthResponse:
     properties:
       access_token:
         type: string
       user:
-        $ref: '#/definitions/dtos.UserResponse'
+        $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UserResponse'
     type: object
-  dtos.CategoryResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.CartItemResponse:
+    properties:
+      id:
+        type: integer
+      price:
+        type: string
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      stock:
+        type: integer
+      store_name:
+        type: string
+      title:
+        type: string
+    type: object
+  github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartItemResponse'
+        type: array
+      user_id:
+        type: integer
+    type: object
+  github_com_dtt4h_go-marketplace_internal_server_dtos.CategoryResponse:
     properties:
       children:
         items:
-          $ref: '#/definitions/dtos.CategoryResponse'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CategoryResponse'
         type: array
       id:
         type: integer
@@ -22,21 +81,23 @@ definitions:
       slug:
         type: string
     type: object
-  dtos.CreateOrderRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.CreateOrderRequest:
     properties:
       address:
         type: string
       items:
         items:
-          $ref: '#/definitions/dtos.OrderItemRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderItemRequest'
         type: array
+      user_id:
+        type: integer
     type: object
-  dtos.CreatePaymentRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.CreatePaymentRequest:
     properties:
       order_id:
         type: integer
     type: object
-  dtos.CreateProductRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.CreateProductRequest:
     properties:
       category_id:
         type: integer
@@ -53,7 +114,7 @@ definitions:
       title:
         type: string
     type: object
-  dtos.CreateStoreRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.CreateStoreRequest:
     properties:
       description:
         type: string
@@ -62,23 +123,33 @@ definitions:
       name:
         type: string
     type: object
-  dtos.LoginRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  github_com_dtt4h_go-marketplace_internal_server_dtos.LoginRequest:
     properties:
       email:
         type: string
       password:
         type: string
     type: object
-  dtos.ModerateProductRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.ModerateProductRequest:
+    properties:
+      reason:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_database_sqlc.ProductStatus'
     type: object
-  dtos.OrderItemRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.OrderItemRequest:
     properties:
       product_id:
         type: integer
       quantity:
         type: integer
     type: object
-  dtos.OrderItemResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.OrderItemResponse:
     properties:
       id:
         type: integer
@@ -91,7 +162,7 @@ definitions:
       quantity:
         type: integer
     type: object
-  dtos.OrderResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.OrderResponse:
     properties:
       address:
         type: string
@@ -101,14 +172,14 @@ definitions:
         type: integer
       items:
         items:
-          $ref: '#/definitions/dtos.OrderItemResponse'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderItemResponse'
         type: array
       status:
         type: string
       total:
         type: string
     type: object
-  dtos.PaymentResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.PaymentResponse:
     properties:
       amount:
         type: string
@@ -131,7 +202,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  dtos.ProductImageResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.ProductImageResponse:
     properties:
       id:
         type: integer
@@ -140,10 +211,10 @@ definitions:
       url:
         type: string
     type: object
-  dtos.ProductResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse:
     properties:
       category:
-        $ref: '#/definitions/dtos.CategoryResponse'
+        $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CategoryResponse'
       created_at:
         type: string
       description:
@@ -152,7 +223,7 @@ definitions:
         type: integer
       images:
         items:
-          $ref: '#/definitions/dtos.ProductImageResponse'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductImageResponse'
         type: array
       price:
         type: string
@@ -161,13 +232,13 @@ definitions:
       stock:
         type: integer
       store:
-        $ref: '#/definitions/dtos.ProductStoreInfo'
+        $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductStoreInfo'
       title:
         type: string
       updated_at:
         type: string
     type: object
-  dtos.ProductStoreInfo:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.ProductStoreInfo:
     properties:
       description:
         type: string
@@ -176,7 +247,7 @@ definitions:
       name:
         type: string
     type: object
-  dtos.ProfileResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.ProfileResponse:
     properties:
       avatar_url:
         type: string
@@ -193,12 +264,12 @@ definitions:
       username:
         type: string
     type: object
-  dtos.RefreshResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.RefreshResponse:
     properties:
       access_token:
         type: string
     type: object
-  dtos.RegisterRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.RegisterRequest:
     properties:
       email:
         type: string
@@ -209,7 +280,14 @@ definitions:
       username:
         type: string
     type: object
-  dtos.StoreResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.ResetPasswordRequest:
+    properties:
+      password:
+        type: string
+      token:
+        type: string
+    type: object
+  github_com_dtt4h_go-marketplace_internal_server_dtos.StoreResponse:
     properties:
       created_at:
         type: string
@@ -224,9 +302,17 @@ definitions:
       user_id:
         type: integer
     type: object
-  dtos.UpdateOrderStatusRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateCartItemRequest:
+    properties:
+      quantity:
+        type: integer
     type: object
-  dtos.UpdateProductRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateOrderStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_database_sqlc.OrderStatus'
+    type: object
+  github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateProductRequest:
     properties:
       description:
         type: string
@@ -237,7 +323,7 @@ definitions:
       title:
         type: string
     type: object
-  dtos.UpdateProfileRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateProfileRequest:
     properties:
       avatar_url:
         type: string
@@ -246,7 +332,16 @@ definitions:
       username:
         type: string
     type: object
-  dtos.UserResponse:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateStoreRequest:
+    properties:
+      description:
+        type: string
+      logo_url:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_dtt4h_go-marketplace_internal_server_dtos.UserResponse:
     properties:
       email:
         type: string
@@ -257,7 +352,7 @@ definitions:
       username:
         type: string
     type: object
-  dtos.WebhookRequest:
+  github_com_dtt4h_go-marketplace_internal_server_dtos.WebhookRequest:
     properties:
       order_id:
         type: integer
@@ -266,7 +361,7 @@ definitions:
       status:
         type: string
     type: object
-  httputil.APIError:
+  github_com_dtt4h_go-marketplace_pkg_httputil.APIError:
     properties:
       code:
         type: string
@@ -274,12 +369,12 @@ definitions:
       message:
         type: string
     type: object
-  httputil.ErrorResponse:
+  github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/httputil.APIError'
+        $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.APIError'
     type: object
-  httputil.PaginatedResponse:
+  github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse:
     properties:
       items: {}
       limit:
@@ -295,6 +390,30 @@ info:
   title: Go Marketplace API
   version: "1.0"
 paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Generates a reset token for the given email
+      parameters:
+      - description: Email address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request password reset
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -306,18 +425,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.LoginRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.AuthResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.AuthResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       summary: Login
       tags:
       - auth
@@ -330,7 +449,7 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Logout
@@ -345,11 +464,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.RefreshResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.RefreshResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       summary: Refresh tokens
       tags:
       - auth
@@ -364,25 +483,196 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.RegisterRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.RegisterRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/dtos.AuthResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.AuthResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       summary: Register a new user
       tags:
       - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets password using the reset token from forgot-password flow
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      summary: Reset password using token
+      tags:
+      - auth
+  /cart:
+    delete:
+      description: Removes all items from the current user's cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Clear cart
+      tags:
+      - cart
+    get:
+      description: Returns all items in the current user's shopping cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user's cart
+      tags:
+      - cart
+  /cart/items:
+    post:
+      consumes:
+      - application/json
+      description: Adds a product to the current user's cart (or updates quantity
+        if already present)
+      parameters:
+      - description: Product ID and quantity
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.AddCartItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add item to cart
+      tags:
+      - cart
+  /cart/items/{itemID}:
+    delete:
+      description: Removes a specific item from the current user's cart
+      parameters:
+      - description: Cart item ID
+        in: path
+        name: itemID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove item from cart
+      tags:
+      - cart
+    patch:
+      consumes:
+      - application/json
+      description: Updates the quantity of a specific cart item
+      parameters:
+      - description: Cart item ID
+        in: path
+        name: itemID
+        required: true
+        type: integer
+      - description: New quantity
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateCartItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CartResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update cart item quantity
+      tags:
+      - cart
   /orders:
     post:
       consumes:
@@ -394,24 +684,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.CreateOrderRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CreateOrderRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/dtos.OrderResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
-      security:
-      - BearerAuth: []
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       summary: Create an order
       tags:
       - orders
@@ -431,30 +715,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.UpdateOrderStatusRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateOrderStatusRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.OrderResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update order status
@@ -477,11 +761,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/httputil.PaginatedResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List current user's orders
@@ -502,19 +786,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.OrderResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.OrderResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get order by ID
@@ -539,15 +823,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/httputil.PaginatedResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List orders for seller's products
@@ -564,30 +848,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.CreatePaymentRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CreatePaymentRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/dtos.PaymentResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.PaymentResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a payment
@@ -607,15 +891,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.PaymentResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.PaymentResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get payment by ID
@@ -636,22 +920,49 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.PaymentResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.PaymentResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Refund a payment
+      tags:
+      - payments
+  /payments/me:
+    get:
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List current user's payments
       tags:
       - payments
   /payments/webhook:
@@ -665,7 +976,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.WebhookRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.WebhookRequest'
       produces:
       - application/json
       responses:
@@ -678,11 +989,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       summary: Payment provider webhook
       tags:
       - payments
@@ -728,11 +1039,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/httputil.PaginatedResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       summary: List products with filters
       tags:
       - products
@@ -746,26 +1057,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.CreateProductRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CreateProductRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/dtos.ProductResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a product
@@ -786,15 +1097,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a product
@@ -813,15 +1124,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.ProductResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       summary: Get product by ID
       tags:
       - products
@@ -840,33 +1151,115 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.UpdateProductRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateProductRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.ProductResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a product
+      tags:
+      - products
+  /products/{id}/images:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an image file and associates it with a product (seller
+        only)
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductImageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload an image for a product
+      tags:
+      - products
+  /products/{id}/images/presigned:
+    get:
+      description: Returns a presigned URL for direct upload to S3 (seller only)
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Content-Type of the file
+        in: query
+        name: content_type
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get presigned upload URL
       tags:
       - products
   /products/{id}/moderate:
@@ -885,30 +1278,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.ModerateProductRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ModerateProductRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.ProductResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProductResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Moderate a product
@@ -924,9 +1317,69 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/dtos.CategoryResponse'
+              $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CategoryResponse'
             type: array
       summary: List product categories
+      tags:
+      - products
+  /products/images/{id}:
+    delete:
+      description: Deletes an image from a product (seller only)
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a product image
+      tags:
+      - products
+  /stores/{id}/products:
+    get:
+      description: Returns paginated list of active products for a specific store
+      parameters:
+      - description: Store ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.PaginatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      summary: List products by store ID
       tags:
       - products
   /users/me:
@@ -937,15 +1390,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.ProfileResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProfileResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get current user profile
@@ -960,32 +1413,67 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.UpdateProfileRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateProfileRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dtos.ProfileResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.ProfileResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update current user profile
       tags:
       - users
   /users/me/store:
+    patch:
+      consumes:
+      - application/json
+      description: Updates store details (name, description, logo)
+      parameters:
+      - description: Store fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.UpdateStoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.StoreResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update store
+      tags:
+      - users
     post:
       consumes:
       - application/json
@@ -996,26 +1484,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dtos.CreateStoreRequest'
+          $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.CreateStoreRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/dtos.StoreResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_internal_server_dtos.StoreResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/httputil.ErrorResponse'
+            $ref: '#/definitions/github_com_dtt4h_go-marketplace_pkg_httputil.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Register as seller (create store)

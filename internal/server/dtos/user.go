@@ -19,6 +19,12 @@ type CreateStoreRequest struct {
 	LogoURL     *string `json:"logo_url,omitempty"`
 }
 
+type UpdateStoreRequest struct {
+	Name        string  `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+	LogoURL     *string `json:"logo_url,omitempty"`
+}
+
 type ProfileResponse struct {
 	ID        int64     `json:"id"`
 	Email     string    `json:"email"`

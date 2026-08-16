@@ -7,7 +7,7 @@ import (
 )
 
 type CreateOrderRequest struct {
-	UserID  int64            `json:"user_id"`
+	UserID  int64              `json:"user_id"`
 	Items   []OrderItemRequest `json:"items"`
 	Address string             `json:"address"`
 }

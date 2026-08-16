@@ -175,3 +175,36 @@ func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 
 	httputil.JSON(w, http.StatusOK, resp)
 }
+
+// ListPaymentsByUser godoc
+// @Summary      List current user's payments
+// @Tags         payments
+// @Security     BearerAuth
+// @Produce      json
+// @Param        page   query  int  false  "Page number (default 1)"
+// @Param        limit  query  int  false  "Items per page (default 20, max 100)"
+// @Success      200  {object}  httputil.PaginatedResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /payments/me [get]
+func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := mw.UserIDFromCtx(r.Context())
+	if !ok {
+		httputil.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	page, limit := httputil.ParsePagination(r)
+
+	items, total, err := h.service.ListPaymentsByUser(r.Context(), userID, page, limit)
+	if err != nil {
+		httputil.InternalError(w, err.Error())
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, httputil.PaginatedResponse{
+		Items: items,
+		Total: int(total),
+		Page:  page,
+		Limit: limit,
+	})
+}
