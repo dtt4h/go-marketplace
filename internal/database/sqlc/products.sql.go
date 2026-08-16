@@ -407,6 +407,92 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]L
 	return items, nil
 }
 
+const listProductsByStoreID = `-- name: ListProductsByStoreID :many
+SELECT p.id, p.store_id, p.category_id, p.title, p.description,
+       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       s.name AS store_name, s.description AS store_description,
+       c.name AS category_name, c.slug AS category_slug
+FROM products p
+LEFT JOIN stores s ON p.store_id = s.id
+LEFT JOIN categories c ON p.category_id = c.id
+WHERE p.store_id = $1
+  AND p.status = 'active'
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListProductsByStoreIDParams struct {
+	StoreID int64 `json:"storeId"`
+	Limit   int32 `json:"limit"`
+	Offset  int32 `json:"offset"`
+}
+
+type ListProductsByStoreIDRow struct {
+	ID               int64              `json:"id"`
+	StoreID          int64              `json:"storeId"`
+	CategoryID       pgtype.Int8        `json:"categoryId"`
+	Title            string             `json:"title"`
+	Description      pgtype.Text        `json:"description"`
+	Price            pgtype.Numeric     `json:"price"`
+	Stock            int32              `json:"stock"`
+	Status           ProductStatus      `json:"status"`
+	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
+	StoreName        pgtype.Text        `json:"storeName"`
+	StoreDescription pgtype.Text        `json:"storeDescription"`
+	CategoryName     pgtype.Text        `json:"categoryName"`
+	CategorySlug     pgtype.Text        `json:"categorySlug"`
+}
+
+func (q *Queries) ListProductsByStoreID(ctx context.Context, arg ListProductsByStoreIDParams) ([]ListProductsByStoreIDRow, error) {
+	rows, err := q.db.Query(ctx, listProductsByStoreID, arg.StoreID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductsByStoreIDRow
+	for rows.Next() {
+		var i ListProductsByStoreIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StoreID,
+			&i.CategoryID,
+			&i.Title,
+			&i.Description,
+			&i.Price,
+			&i.Stock,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.StoreName,
+			&i.StoreDescription,
+			&i.CategoryName,
+			&i.CategorySlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductsByStoreIDCount = `-- name: ListProductsByStoreIDCount :one
+SELECT COUNT(*)
+FROM products p
+WHERE p.store_id = $1
+  AND p.status = 'active'
+`
+
+func (q *Queries) ListProductsByStoreIDCount(ctx context.Context, storeID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, listProductsByStoreIDCount, storeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const listProductsCount = `-- name: ListProductsCount :one
 SELECT COUNT(*)
 FROM products p

@@ -187,6 +187,15 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 	return string(ns.UserRole), nil
 }
 
+type CartItem struct {
+	ID        int64              `json:"id"`
+	UserID    int64              `json:"userId"`
+	ProductID int64              `json:"productId"`
+	Quantity  int32              `json:"quantity"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
+}
+
 type Category struct {
 	ID       int64       `json:"id"`
 	ParentID pgtype.Int8 `json:"parentId"`
@@ -264,13 +273,15 @@ type Store struct {
 }
 
 type User struct {
-	ID           int64              `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"passwordHash"`
-	Role         UserRole           `json:"role"`
-	Username     string             `json:"username"`
-	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
-	Phone        pgtype.Text        `json:"phone"`
-	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+	ID                  int64              `json:"id"`
+	Email               string             `json:"email"`
+	PasswordHash        string             `json:"passwordHash"`
+	Role                UserRole           `json:"role"`
+	Username            string             `json:"username"`
+	AvatarUrl           pgtype.Text        `json:"avatarUrl"`
+	Phone               pgtype.Text        `json:"phone"`
+	CreatedAt           pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt           pgtype.Timestamptz `json:"updatedAt"`
+	ResetToken          pgtype.Text        `json:"resetToken"`
+	ResetTokenExpiresAt pgtype.Timestamptz `json:"resetTokenExpiresAt"`
 }

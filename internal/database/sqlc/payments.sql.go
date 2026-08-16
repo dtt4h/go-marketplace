@@ -94,6 +94,65 @@ func (q *Queries) GetPaymentByOrderID(ctx context.Context, orderID int64) (Payme
 	return i, err
 }
 
+const listPaymentsByUserID = `-- name: ListPaymentsByUserID :many
+SELECT p.id, p.order_id, p.amount, p.currency, p.status, p.provider, p.provider_payment_id, p.created_at, p.updated_at
+FROM payments p
+JOIN orders o ON o.id = p.order_id
+WHERE o.user_id = $1
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListPaymentsByUserIDParams struct {
+	UserID int64 `json:"userId"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListPaymentsByUserID(ctx context.Context, arg ListPaymentsByUserIDParams) ([]Payment, error) {
+	rows, err := q.db.Query(ctx, listPaymentsByUserID, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Payment
+	for rows.Next() {
+		var i Payment
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.Amount,
+			&i.Currency,
+			&i.Status,
+			&i.Provider,
+			&i.ProviderPaymentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPaymentsByUserIDCount = `-- name: ListPaymentsByUserIDCount :one
+SELECT COUNT(*)
+FROM payments p
+JOIN orders o ON o.id = p.order_id
+WHERE o.user_id = $1
+`
+
+func (q *Queries) ListPaymentsByUserIDCount(ctx context.Context, userID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, listPaymentsByUserIDCount, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const updatePaymentStatus = `-- name: UpdatePaymentStatus :one
 UPDATE payments
 SET status = $2,

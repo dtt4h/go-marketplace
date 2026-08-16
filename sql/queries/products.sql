@@ -103,6 +103,25 @@ FROM products p
 JOIN stores s ON p.store_id = s.id
 WHERE p.id = $1;
 
+-- name: ListProductsByStoreID :many
+SELECT p.id, p.store_id, p.category_id, p.title, p.description,
+       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       s.name AS store_name, s.description AS store_description,
+       c.name AS category_name, c.slug AS category_slug
+FROM products p
+LEFT JOIN stores s ON p.store_id = s.id
+LEFT JOIN categories c ON p.category_id = c.id
+WHERE p.store_id = $1
+  AND p.status = 'active'
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListProductsByStoreIDCount :one
+SELECT COUNT(*)
+FROM products p
+WHERE p.store_id = $1
+  AND p.status = 'active';
+
 -- name: GetImageByID :one
 SELECT id, product_id, url, position, object_key
 FROM product_images

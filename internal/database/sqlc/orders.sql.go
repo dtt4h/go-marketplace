@@ -180,6 +180,35 @@ func (q *Queries) GetOrderItems(ctx context.Context, orderID int64) ([]GetOrderI
 	return items, nil
 }
 
+const getOrderItemsByOrderID = `-- name: GetOrderItemsByOrderID :many
+SELECT product_id, quantity FROM order_items WHERE order_id = $1
+`
+
+type GetOrderItemsByOrderIDRow struct {
+	ProductID int64 `json:"productId"`
+	Quantity  int32 `json:"quantity"`
+}
+
+func (q *Queries) GetOrderItemsByOrderID(ctx context.Context, orderID int64) ([]GetOrderItemsByOrderIDRow, error) {
+	rows, err := q.db.Query(ctx, getOrderItemsByOrderID, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOrderItemsByOrderIDRow
+	for rows.Next() {
+		var i GetOrderItemsByOrderIDRow
+		if err := rows.Scan(&i.ProductID, &i.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrderWithItems = `-- name: GetOrderWithItems :one
 SELECT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at,
        oi.id AS item_id, oi.product_id, oi.quantity, oi.price,
@@ -236,6 +265,39 @@ func (q *Queries) GetProductStoreID(ctx context.Context, id int64) (int64, error
 	var store_id int64
 	err := row.Scan(&store_id)
 	return store_id, err
+}
+
+const incrementProductStock = `-- name: IncrementProductStock :one
+UPDATE products
+SET stock = stock + $2
+WHERE id = $1
+RETURNING id, store_id, title, price, stock
+`
+
+type IncrementProductStockParams struct {
+	ID    int64 `json:"id"`
+	Stock int32 `json:"stock"`
+}
+
+type IncrementProductStockRow struct {
+	ID      int64          `json:"id"`
+	StoreID int64          `json:"storeId"`
+	Title   string         `json:"title"`
+	Price   pgtype.Numeric `json:"price"`
+	Stock   int32          `json:"stock"`
+}
+
+func (q *Queries) IncrementProductStock(ctx context.Context, arg IncrementProductStockParams) (IncrementProductStockRow, error) {
+	row := q.db.QueryRow(ctx, incrementProductStock, arg.ID, arg.Stock)
+	var i IncrementProductStockRow
+	err := row.Scan(
+		&i.ID,
+		&i.StoreID,
+		&i.Title,
+		&i.Price,
+		&i.Stock,
+	)
+	return i, err
 }
 
 const listOrdersBySeller = `-- name: ListOrdersBySeller :many

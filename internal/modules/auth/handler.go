@@ -41,7 +41,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.Register(r.Context(), req)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrWeakPassword):
+		case errors.Is(err, ErrWeakPassword), errors.Is(err, ErrEmailRequired), errors.Is(err, ErrUsernameRequired):
 			httputil.ValidationError(w, err.Error(), nil)
 		case errors.Is(err, ErrEmailTaken):
 			httputil.ErrorWithDetails(w, http.StatusConflict, "CONFLICT", err.Error(), map[string]string{"field": "email"})
@@ -163,5 +163,75 @@ func (h *AuthHandler) clearRefreshCookie(w http.ResponseWriter) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   -1,
+	})
+}
+
+// ForgotPassword godoc
+// @Summary      Request password reset
+// @Description  Generates a reset token for the given email
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.ForgotPasswordRequest  true  "Email address"
+// @Success      200  {object}  map[string]string
+// @Router       /auth/forgot-password [post]
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req dtos.ForgotPasswordRequest
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.ValidationError(w, "invalid request body", nil)
+		return
+	}
+
+	if req.Email == "" {
+		httputil.ValidationError(w, "email is required", nil)
+		return
+	}
+
+	_ = h.service.ForgotPassword(r.Context(), req.Email)
+
+	httputil.JSON(w, http.StatusOK, map[string]string{
+		"message": "if the email exists, a reset token has been generated",
+	})
+}
+
+// ResetPassword godoc
+// @Summary      Reset password using token
+// @Description  Resets password using the reset token from forgot-password flow
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.ResetPasswordRequest  true  "Reset token and new password"
+// @Success      200  {object}  map[string]string
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Router       /auth/reset-password [post]
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req dtos.ResetPasswordRequest
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.ValidationError(w, "invalid request body", nil)
+		return
+	}
+
+	if req.Token == "" {
+		httputil.ValidationError(w, "token is required", nil)
+		return
+	}
+
+	if req.Password == "" {
+		httputil.ValidationError(w, "password is required", nil)
+		return
+	}
+
+	if err := h.service.ResetPassword(r.Context(), req.Token, req.Password); err != nil {
+		switch {
+		case errors.Is(err, ErrWeakPassword):
+			httputil.ValidationError(w, err.Error(), nil)
+		default:
+			httputil.ValidationError(w, "invalid or expired reset token", nil)
+		}
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, map[string]string{
+		"message": "password has been reset successfully",
 	})
 }

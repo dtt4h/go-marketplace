@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	Env      string
+	DevMode  bool
 	Server   ServerConfig
 	Database DatabaseConfig
 	JWT      JWTConfig
@@ -75,7 +76,8 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Env: getEnv("APP_ENV", "development"),
+		Env:     getEnv("APP_ENV", "development"),
+		DevMode: getEnv("APP_ENV", "development") == "development",
 		Server: ServerConfig{
 			Port:         getEnvInt("HTTP_PORT", 8080),
 			ReadTimeout:  getEnvDuration("HTTP_READ_TIMEOUT", 10*time.Second),
@@ -91,7 +93,7 @@ func Load() (*Config, error) {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		JWT: JWTConfig{
-			Secret:     getEnv("JWT_SECRET", ""),
+			Secret:     getEnv("JWT_SECRET", "dev-secret-change-me"),
 			AccessTTL:  getEnvDuration("JWT_ACCESS_TTL", 15*time.Minute),
 			RefreshTTL: getEnvDuration("JWT_REFRESH_TTL", 168*time.Hour),
 		},
@@ -111,10 +113,6 @@ func Load() (*Config, error) {
 			SecretKey: getEnv("S3_SECRET_KEY", ""),
 			Bucket:    getEnv("S3_BUCKET", ""),
 		},
-	}
-
-	if cfg.JWT.Secret == "" {
-		return nil, fmt.Errorf("JWT_SECRET is required")
 	}
 
 	return cfg, nil

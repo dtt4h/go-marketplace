@@ -2,10 +2,9 @@ package auth
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -24,6 +23,8 @@ var (
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 	ErrRefreshTokenExpired = errors.New("refresh token expired")
 	ErrWeakPassword        = errors.New("password must be at least 8 characters")
+	ErrEmailRequired       = errors.New("email is required")
+	ErrUsernameRequired    = errors.New("username is required")
 )
 
 // AuthService defines business logic for authentication.
@@ -32,6 +33,8 @@ type AuthService interface {
 	Login(ctx context.Context, req dtos.LoginRequest) (dtos.AuthResponse, error)
 	Refresh(ctx context.Context, refreshToken string) (dtos.RefreshResponse, error)
 	Logout(ctx context.Context, userID int64) error
+	ForgotPassword(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, token, newPassword string) error
 }
 
 type authService struct {
@@ -45,6 +48,12 @@ func NewAuthService(repo AuthRepository, cfg *config.Config) AuthService {
 }
 
 func (s *authService) Register(ctx context.Context, req dtos.RegisterRequest) (dtos.AuthResponse, error) {
+	if strings.TrimSpace(req.Email) == "" {
+		return dtos.AuthResponse{}, ErrEmailRequired
+	}
+	if strings.TrimSpace(req.Username) == "" {
+		return dtos.AuthResponse{}, ErrUsernameRequired
+	}
 	if len(req.Password) < 8 {
 		return dtos.AuthResponse{}, ErrWeakPassword
 	}
@@ -175,9 +184,49 @@ func (s *authService) Logout(ctx context.Context, userID int64) error {
 	return s.repo.DeleteUserRefreshTokens(ctx, userID)
 }
 
-func hashToken(token string) string {
-	h := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(h[:])
+func (s *authService) ForgotPassword(ctx context.Context, email string) error {
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil
+	}
+
+	expiresAt := time.Now().Add(1 * time.Hour)
+	_, err = s.repo.GenerateResetToken(ctx, user.ID, expiresAt)
+	if err != nil {
+		return fmt.Errorf("generate reset token: %w", err)
+	}
+
+	return nil
+}
+
+func (s *authService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	if len(newPassword) < 8 {
+		return ErrWeakPassword
+	}
+
+	tokenHash := hashToken(token)
+
+	user, err := s.repo.GetUserByResetToken(ctx, tokenHash)
+	if err != nil {
+		if pgutil.IsNoRows(err) {
+			return errors.New("invalid or expired reset token")
+		}
+		return fmt.Errorf("get user by reset token: %w", err)
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), 12)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+
+	_, err = s.repo.ResetPassword(ctx, user.ID, string(hashedPassword))
+	if err != nil {
+		return fmt.Errorf("reset password: %w", err)
+	}
+
+	_ = s.repo.DeleteUserRefreshTokens(ctx, user.ID)
+
+	return nil
 }
 
 func (s *authService) generateTokens(userID int64, role string) (accessToken, refreshToken string, err error) {

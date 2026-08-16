@@ -238,3 +238,36 @@ func ToProductListItem(row db.ListProductsRow, images []db.ProductImage) Product
 
 	return item
 }
+
+func ToProductListItemFromStoreRow(row db.ListProductsByStoreIDRow, images []db.ProductImage) ProductListItem {
+	item := ProductListItem{
+		ID:        row.ID,
+		Title:     row.Title,
+		Price:     NumericToStr(row.Price),
+		Stock:     int(row.Stock),
+		Images:    toProductImages(images),
+		CreatedAt: row.CreatedAt.Time,
+	}
+
+	if row.StoreName.Valid {
+		item.Store = &ProductStoreInfo{
+			ID:   row.StoreID,
+			Name: row.StoreName.String,
+		}
+	}
+
+	if row.CategoryName.Valid {
+		cat := CategoryResponse{
+			Name: row.CategoryName.String,
+		}
+		if row.CategoryID.Valid {
+			cat.ID = row.CategoryID.Int64
+		}
+		if row.CategorySlug.Valid {
+			cat.Slug = row.CategorySlug.String
+		}
+		item.Category = &cat
+	}
+
+	return item
+}

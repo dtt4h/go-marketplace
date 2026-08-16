@@ -145,3 +145,9 @@ CREATE TABLE refresh_tokens (
 
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_token   ON refresh_tokens(token);
+
+
+ALTER TABLE users
+    ADD COLUMN reset_token VARCHAR(64),
+    ADD COLUMN reset_token_expires_at TIMESTAMPTZ;
+CREATE INDEX idx_users_reset_token ON users(reset_token);

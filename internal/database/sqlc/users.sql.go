@@ -44,6 +44,27 @@ func (q *Queries) CreateStore(ctx context.Context, arg CreateStoreParams) (Store
 	return i, err
 }
 
+const getStoreByID = `-- name: GetStoreByID :one
+SELECT id, user_id, name, description, logo_url, created_at, updated_at
+FROM stores
+WHERE id = $1
+`
+
+func (q *Queries) GetStoreByID(ctx context.Context, id int64) (Store, error) {
+	row := q.db.QueryRow(ctx, getStoreByID, id)
+	var i Store
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Description,
+		&i.LogoUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getStoreByUserID = `-- name: GetStoreByUserID :one
 SELECT id, user_id, name, description, logo_url, created_at, updated_at
 FROM stores
@@ -78,6 +99,42 @@ func (q *Queries) GetStoreOwnerByStoreID(ctx context.Context, id int64) (int64, 
 	return user_id, err
 }
 
+const updateStore = `-- name: UpdateStore :one
+UPDATE stores
+SET name        = COALESCE($1, name),
+    description = COALESCE($2, description),
+    logo_url    = COALESCE($3, logo_url)
+WHERE id = $4
+RETURNING id, user_id, name, description, logo_url, created_at, updated_at
+`
+
+type UpdateStoreParams struct {
+	Name        pgtype.Text `json:"name"`
+	Description pgtype.Text `json:"description"`
+	LogoUrl     pgtype.Text `json:"logoUrl"`
+	ID          int64       `json:"id"`
+}
+
+func (q *Queries) UpdateStore(ctx context.Context, arg UpdateStoreParams) (Store, error) {
+	row := q.db.QueryRow(ctx, updateStore,
+		arg.Name,
+		arg.Description,
+		arg.LogoUrl,
+		arg.ID,
+	)
+	var i Store
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Description,
+		&i.LogoUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateUserRole = `-- name: UpdateUserRole :one
 UPDATE users
 SET role = $2
@@ -90,9 +147,21 @@ type UpdateUserRoleParams struct {
 	Role UserRole `json:"role"`
 }
 
-func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error) {
+type UpdateUserRoleRow struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"passwordHash"`
+	Role         UserRole           `json:"role"`
+	Username     string             `json:"username"`
+	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
+	Phone        pgtype.Text        `json:"phone"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (UpdateUserRoleRow, error) {
 	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
-	var i User
+	var i UpdateUserRoleRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,

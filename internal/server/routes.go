@@ -10,6 +10,7 @@ import (
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/modules/auth"
+	"github.com/dtt4h/go-marketplace/internal/modules/cart"
 	"github.com/dtt4h/go-marketplace/internal/modules/orders"
 	"github.com/dtt4h/go-marketplace/internal/modules/payments"
 	"github.com/dtt4h/go-marketplace/internal/modules/products"
@@ -32,6 +33,7 @@ func (s *Server) setupRoutes() {
 		s.registerAuthRoutes(r)
 		s.registerUserRoutes(r)
 		s.registerProductRoutes(r)
+		s.registerCartRoutes(r)
 		s.registerOrderRoutes(r)
 		s.registerPaymentRoutes(r)
 	})
@@ -48,6 +50,9 @@ func (s *Server) registerAuthRoutes(r chi.Router) {
 	r.Post("/auth/login", authHandler.Login)
 	r.Post("/auth/refresh", authHandler.Refresh)
 	r.With(mw.JWTAuth(s.cfg)).Post("/auth/logout", authHandler.Logout)
+	
+	r.Post("/auth/forgot-password", authHandler.ForgotPassword)
+	r.Post("/auth/reset-password", authHandler.ResetPassword)
 }
 
 func (s *Server) registerUserRoutes(r chi.Router) {
@@ -60,6 +65,7 @@ func (s *Server) registerUserRoutes(r chi.Router) {
 	r.With(mw.JWTAuth(s.cfg)).Get("/users/me", userHandler.GetProfile)
 	r.With(mw.JWTAuth(s.cfg)).Patch("/users/me", userHandler.UpdateProfile)
 	r.With(mw.JWTAuth(s.cfg)).Post("/users/me/store", userHandler.CreateStore)
+	r.With(mw.JWTAuth(s.cfg)).Patch("/users/me/store", userHandler.UpdateStore)
 }
 
 func (s *Server) registerProductRoutes(r chi.Router) {
@@ -73,6 +79,7 @@ func (s *Server) registerProductRoutes(r chi.Router) {
 	r.Get("/products", productHandler.ListProducts)
 	r.Get("/products/categories", productHandler.ListCategories)
 	r.Get("/products/{id}", productHandler.GetProduct)
+	r.Get("/stores/{id}/products", productHandler.ListProductsByStore)
 
 	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
 		Post("/products", productHandler.CreateProduct)
@@ -97,15 +104,31 @@ func (s *Server) registerProductRoutes(r chi.Router) {
 	}
 }
 
+func (s *Server) registerCartRoutes(r chi.Router) {
+	queries := db.New(s.db)
+
+	cartRepo := cart.NewCartRepository(queries)
+	cartSvc := cart.NewCartService(cartRepo, s.db)
+	cartHandler := cart.NewCartHandler(cartSvc)
+
+	r.With(mw.JWTAuth(s.cfg)).Get("/cart", cartHandler.GetCart)
+	r.With(mw.JWTAuth(s.cfg)).Post("/cart/items", cartHandler.AddItem)
+	r.With(mw.JWTAuth(s.cfg)).Patch("/cart/items/{itemID}", cartHandler.UpdateItem)
+	r.With(mw.JWTAuth(s.cfg)).Delete("/cart/items/{itemID}", cartHandler.RemoveItem)
+	r.With(mw.JWTAuth(s.cfg)).Delete("/cart", cartHandler.Clear)
+}
+
 func (s *Server) registerOrderRoutes(r chi.Router) {
 	queries := db.New(s.db)
 
 	orderRepo := orders.NewOrderRepository(queries)
 	userRepo := users.NewUserRepository(queries, s.db)
-	orderSvc := orders.NewOrderService(orderRepo, userRepo, s.db)
+	paymentRepo := payments.NewPaymentRepository(queries, s.db)
+	paymentSvc := payments.NewPaymentService(paymentRepo, orderRepo, s.db)
+	orderSvc := orders.NewOrderService(orderRepo, userRepo, paymentSvc, s.db, s.log)
 	orderHandler := orders.NewOrderHandler(orderSvc)
 
-	r.With(mw.JWTAuth(s.cfg)).Post("/orders", orderHandler.CreateOrder)
+	r.Post("/orders", orderHandler.CreateOrder)
 	r.With(mw.JWTAuth(s.cfg)).Get("/orders/me", orderHandler.ListOrdersByUser)
 	r.With(mw.JWTAuth(s.cfg)).Get("/orders/me/{id}", orderHandler.GetOrder)
 
@@ -124,6 +147,7 @@ func (s *Server) registerPaymentRoutes(r chi.Router) {
 	paymentHandler := payments.NewPaymentHandler(paymentSvc)
 
 	r.With(mw.JWTAuth(s.cfg)).Post("/payments", paymentHandler.CreatePayment)
+	r.With(mw.JWTAuth(s.cfg)).Get("/payments/me", paymentHandler.ListPaymentsByUser)
 	r.With(mw.JWTAuth(s.cfg)).Get("/payments/{id}", paymentHandler.GetPayment)
 	r.Post("/payments/webhook", paymentHandler.Webhook)
 	r.With(mw.JWTAuth(s.cfg)).Post("/payments/{id}/refund", paymentHandler.RefundPayment)

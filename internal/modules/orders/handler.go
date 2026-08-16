@@ -39,7 +39,7 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserID == 0 {
+	if req.UserID <= 0 {
 		httputil.ValidationError(w, "user_id is required", nil)
 		return
 	}
@@ -47,11 +47,9 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.CreateOrder(r.Context(), req.UserID, req)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrOrderEmpty):
-			httputil.ValidationError(w, err.Error(), nil)
-		case errors.Is(err, ErrInsufficientStock):
-			httputil.ValidationError(w, err.Error(), nil)
-		case errors.Is(err, ErrInvalidQuantity):
+		case errors.Is(err, ErrOrderEmpty), errors.Is(err, ErrAddressRequired),
+			errors.Is(err, ErrInvalidProductID), errors.Is(err, ErrInsufficientStock),
+			errors.Is(err, ErrInvalidQuantity):
 			httputil.ValidationError(w, err.Error(), nil)
 		case errors.Is(err, ErrProductNotFound):
 			httputil.NotFound(w, err.Error())

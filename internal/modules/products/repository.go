@@ -15,6 +15,7 @@ import (
 type ProductRepository interface {
 	ListCategories(ctx context.Context) ([]db.ListCategoriesRow, error)
 	ListProducts(ctx context.Context, storeID, categoryID *int64, minPrice, maxPrice *string, search *string, sort string, page, limit int) ([]db.ListProductsRow, int64, error)
+	ListProductsByStoreID(ctx context.Context, storeID int64, page, limit int) ([]db.ListProductsByStoreIDRow, int64, error)
 	GetProduct(ctx context.Context, id int64) (db.GetProductRow, error)
 	CreateProductWithImages(ctx context.Context, storeID int64, categoryID *int64, title, description *string, price string, stock int32, images []string) (db.Product, error)
 	UpdateProduct(ctx context.Context, id int64, title, description *string, price *string, stock *int32) (db.Product, error)
@@ -197,6 +198,26 @@ func (r *productRepository) GetImageByID(ctx context.Context, id int64) (db.Prod
 
 func (r *productRepository) DeleteImageByID(ctx context.Context, id int64) error {
 	return r.queries.DeleteImageByID(ctx, id)
+}
+
+func (r *productRepository) ListProductsByStoreID(ctx context.Context, storeID int64, page, limit int) ([]db.ListProductsByStoreIDRow, int64, error) {
+	offset := int32((page - 1) * limit)
+
+	products, err := r.queries.ListProductsByStoreID(ctx, db.ListProductsByStoreIDParams{
+		StoreID: storeID,
+		Limit:   int32(limit),
+		Offset:  offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list products by store: %w", err)
+	}
+
+	count, err := r.queries.ListProductsByStoreIDCount(ctx, storeID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list products by store count: %w", err)
+	}
+
+	return products, count, nil
 }
 
 func toSearchText(v *string) pgtype.Text {

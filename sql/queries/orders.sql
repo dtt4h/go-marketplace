@@ -77,3 +77,12 @@ SELECT store_id FROM products WHERE id = $1;
 
 -- name: CountOrderItems :one
 SELECT COUNT(*) FROM order_items WHERE order_id = $1;
+
+-- name: IncrementProductStock :one
+UPDATE products
+SET stock = stock + $2
+WHERE id = $1
+RETURNING id, store_id, title, price, stock;
+
+-- name: GetOrderItemsByOrderID :many
+SELECT product_id, quantity FROM order_items WHERE order_id = $1;
