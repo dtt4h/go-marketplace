@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { ProductDetails } from '../features/products/component/ProductDetails/ProductDetails'
-import { mockProductDetails } from '../features/products/mocks/productDetails'
+import { useProduct } from '../features/products/hooks/useProduct'
 import { useCartStore } from '../features/cart/store/cartStore'
+import { Button } from '../shared/ui/Button/Button'
 
 import cls from './ProductPage.module.scss'
 
 export function ProductPage() {
   const { productId } = useParams()
+  const { product, isLoading, error, retry } =
+    useProduct(productId)
   const addItem = useCartStore((state) => state.addItem)
   const [isCartNoticeVisible, setIsCartNoticeVisible] =
     useState(false)
@@ -22,12 +25,31 @@ export function ProductPage() {
     }
   }, [])
 
-  const product = mockProductDetails.find(
-    (item) => item.id === Number(productId),
-  )
+  if (isLoading) {
+    return (
+      <main className={cls.stateContainer}>
+        <p className={cls.stateMessage} role="status">
+          Загружаем товар...
+        </p>
+      </main>
+    )
+  }
 
-  if (!product) {
-    return <p role="alert">Товар не найден</p>
+  if (error || !product) {
+    const canRetry = error !== 'Товар не найден'
+
+    return (
+      <main className={cls.stateContainer}>
+        <p className={cls.errorMessage} role="alert">
+          {error ?? 'Товар не найден'}
+        </p>
+        {canRetry && (
+          <Button type="button" onClick={retry}>
+            Попробовать снова
+          </Button>
+        )}
+      </main>
+    )
   }
 
   const handleAddToCart = () => {

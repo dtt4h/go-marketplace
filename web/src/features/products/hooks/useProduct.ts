@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { useCallback, useEffect, useState } from 'react'
 
-import { getProductById } from '../api/products'
+import { getMockProductById } from '../mocks/getMockProductById'
 import type { ProductDetails } from '../type'
 
 export function useProduct(
@@ -11,6 +10,11 @@ export function useProduct(
     useState<ProductDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [requestVersion, setRequestVersion] = useState(0)
+
+  const retry = useCallback(() => {
+    setRequestVersion((version) => version + 1)
+  }, [])
 
   useEffect(() => {
     let isActive = true
@@ -27,21 +31,18 @@ export function useProduct(
       }
 
       try {
-        const response = await getProductById(productId)
+        const response = await getMockProductById(productId)
 
         if (isActive) {
+          if (!response) {
+            setError('Товар не найден')
+            return
+          }
+
           setProduct(response)
         }
-      } catch (error) {
+      } catch {
         if (!isActive) {
-          return
-        }
-
-        if (
-          axios.isAxiosError(error) &&
-          error.response?.status === 404
-        ) {
-          setError('Товар не найден')
           return
         }
 
@@ -58,11 +59,12 @@ export function useProduct(
     return () => {
       isActive = false
     }
-  }, [productId])
+  }, [productId, requestVersion])
 
   return {
     product,
     isLoading,
     error,
+    retry,
   }
 }
