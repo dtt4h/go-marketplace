@@ -8,7 +8,6 @@ import (
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	"github.com/dtt4h/go-marketplace/pkg/pgutil"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -85,11 +84,10 @@ type CartService interface {
 
 type cartService struct {
 	repo CartRepository
-	pool *pgxpool.Pool
 }
 
-func NewCartService(repo CartRepository, pool *pgxpool.Pool) CartService {
-	return &cartService{repo: repo, pool: pool}
+func NewCartService(repo CartRepository) CartService {
+	return &cartService{repo: repo}
 }
 
 func (s *cartService) GetCart(ctx context.Context, userID int64) (dtos.CartResponse, error) {
@@ -100,15 +98,22 @@ func (s *cartService) GetCart(ctx context.Context, userID int64) (dtos.CartRespo
 
 	items := make([]dtos.CartItemResponse, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, dtos.CartItemResponse{
+		item := dtos.CartItemResponse{
 			ID:        row.ID,
 			ProductID: row.ProductID,
 			Quantity:  row.Quantity,
 			Title:     row.Title,
 			Price:     dtos.NumericToStr(row.Price),
 			Stock:     row.Stock,
-			StoreName: row.StoreName,
-		})
+			Store: &dtos.CartStoreInfo{
+				ID:   row.StoreID,
+				Name: row.StoreName,
+			},
+		}
+		if row.PreviewImageUrl != "" {
+			item.PreviewImageURL = row.PreviewImageUrl
+		}
+		items = append(items, item)
 	}
 
 	return dtos.CartResponse{UserID: userID, Items: items}, nil
@@ -135,7 +140,7 @@ func (s *cartService) AddItem(ctx context.Context, userID int64, req dtos.AddCar
 		return dtos.CartResponse{}, ErrInsufficientStock
 	}
 
-	item, err := s.repo.UpsertCartItem(ctx, db.UpsertCartItemParams{
+	_, err = s.repo.UpsertCartItem(ctx, db.UpsertCartItemParams{
 		UserID:    userID,
 		ProductID: req.ProductID,
 		Quantity:  req.Quantity,
@@ -143,8 +148,6 @@ func (s *cartService) AddItem(ctx context.Context, userID int64, req dtos.AddCar
 	if err != nil {
 		return dtos.CartResponse{}, fmt.Errorf("upsert cart item: %w", err)
 	}
-
-	_ = item
 
 	return s.GetCart(ctx, userID)
 }

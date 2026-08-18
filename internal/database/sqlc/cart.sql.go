@@ -89,7 +89,12 @@ func (q *Queries) GetCartItemByUserIDAndProductID(ctx context.Context, arg GetCa
 const getCartItemsByUserID = `-- name: GetCartItemsByUserID :many
 SELECT ci.id, ci.user_id, ci.product_id, ci.quantity, ci.created_at, ci.updated_at,
        p.title, p.price, p.stock, p.status,
-       s.name AS store_name, s.id AS store_id
+       s.name AS store_name, s.id AS store_id,
+       (
+           SELECT COALESCE(pi.url, '') FROM product_images pi
+           WHERE pi.product_id = ci.product_id
+           ORDER BY pi.position ASC LIMIT 1
+       ) AS preview_image_url
 FROM cart_items ci
 JOIN products p ON p.id = ci.product_id
 JOIN stores s ON s.id = p.store_id
@@ -98,18 +103,19 @@ ORDER BY ci.created_at ASC
 `
 
 type GetCartItemsByUserIDRow struct {
-	ID        int64              `json:"id"`
-	UserID    int64              `json:"userId"`
-	ProductID int64              `json:"productId"`
-	Quantity  int32              `json:"quantity"`
-	CreatedAt pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
-	Title     string             `json:"title"`
-	Price     pgtype.Numeric     `json:"price"`
-	Stock     int32              `json:"stock"`
-	Status    ProductStatus      `json:"status"`
-	StoreName string             `json:"storeName"`
-	StoreID   int64              `json:"storeId"`
+	ID              int64              `json:"id"`
+	UserID          int64              `json:"userId"`
+	ProductID       int64              `json:"productId"`
+	Quantity        int32              `json:"quantity"`
+	CreatedAt       pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt       pgtype.Timestamptz `json:"updatedAt"`
+	Title           string             `json:"title"`
+	Price           pgtype.Numeric     `json:"price"`
+	Stock           int32              `json:"stock"`
+	Status          ProductStatus      `json:"status"`
+	StoreName       string             `json:"storeName"`
+	StoreID         int64              `json:"storeId"`
+	PreviewImageUrl string             `json:"previewImageUrl"`
 }
 
 func (q *Queries) GetCartItemsByUserID(ctx context.Context, userID int64) ([]GetCartItemsByUserIDRow, error) {
@@ -134,6 +140,7 @@ func (q *Queries) GetCartItemsByUserID(ctx context.Context, userID int64) ([]Get
 			&i.Status,
 			&i.StoreName,
 			&i.StoreID,
+			&i.PreviewImageUrl,
 		); err != nil {
 			return nil, err
 		}

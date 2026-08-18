@@ -38,7 +38,7 @@ func (h *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.GetCart(r.Context(), userID)
 	if err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 	httputil.JSON(w, http.StatusOK, resp)
@@ -80,7 +80,7 @@ func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrInsufficientStock):
 			httputil.ValidationError(w, err.Error(), nil)
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -130,7 +130,7 @@ func (h *CartHandler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrInsufficientStock):
 			httputil.ValidationError(w, err.Error(), nil)
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -163,7 +163,7 @@ func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.RemoveItem(r.Context(), userID, itemID)
 	if err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 	httputil.JSON(w, http.StatusOK, resp)
@@ -187,7 +187,7 @@ func (h *CartHandler) Clear(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.Clear(r.Context(), userID)
 	if err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 	httputil.JSON(w, http.StatusOK, resp)

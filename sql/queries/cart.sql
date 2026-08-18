@@ -10,7 +10,12 @@ RETURNING id, user_id, product_id, quantity, created_at, updated_at;
 -- name: GetCartItemsByUserID :many
 SELECT ci.id, ci.user_id, ci.product_id, ci.quantity, ci.created_at, ci.updated_at,
        p.title, p.price, p.stock, p.status,
-       s.name AS store_name, s.id AS store_id
+       s.name AS store_name, s.id AS store_id,
+       (
+           SELECT COALESCE(pi.url, '') FROM product_images pi
+           WHERE pi.product_id = ci.product_id
+           ORDER BY pi.position ASC LIMIT 1
+       ) AS preview_image_url
 FROM cart_items ci
 JOIN products p ON p.id = ci.product_id
 JOIN stores s ON s.id = p.store_id
