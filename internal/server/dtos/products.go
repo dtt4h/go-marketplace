@@ -206,32 +206,45 @@ func ToProductResponse(row db.GetProductRow, images []db.ProductImage) ProductRe
 	return resp
 }
 
-func ToProductListItem(row db.ListProductsRow, images []db.ProductImage) ProductListItem {
+type productListFields struct {
+	ID            int64
+	Title         string
+	Price         pgtype.Numeric
+	Stock         int32
+	CreatedAt     pgtype.Timestamptz
+	StoreID       int64
+	StoreName     pgtype.Text
+	CategoryID    pgtype.Int8
+	CategoryName  pgtype.Text
+	CategorySlug  pgtype.Text
+}
+
+func toProductListItem(f productListFields, images []db.ProductImage) ProductListItem {
 	item := ProductListItem{
-		ID:        row.ID,
-		Title:     row.Title,
-		Price:     NumericToStr(row.Price),
-		Stock:     int(row.Stock),
+		ID:        f.ID,
+		Title:     f.Title,
+		Price:     NumericToStr(f.Price),
+		Stock:     int(f.Stock),
 		Images:    toProductImages(images),
-		CreatedAt: row.CreatedAt.Time,
+		CreatedAt: f.CreatedAt.Time,
 	}
 
-	if row.StoreName.Valid {
+	if f.StoreName.Valid {
 		item.Store = &ProductStoreInfo{
-			ID:   row.StoreID,
-			Name: row.StoreName.String,
+			ID:   f.StoreID,
+			Name: f.StoreName.String,
 		}
 	}
 
-	if row.CategoryName.Valid {
+	if f.CategoryName.Valid {
 		cat := CategoryResponse{
-			Name: row.CategoryName.String,
+			Name: f.CategoryName.String,
 		}
-		if row.CategoryID.Valid {
-			cat.ID = row.CategoryID.Int64
+		if f.CategoryID.Valid {
+			cat.ID = f.CategoryID.Int64
 		}
-		if row.CategorySlug.Valid {
-			cat.Slug = row.CategorySlug.String
+		if f.CategorySlug.Valid {
+			cat.Slug = f.CategorySlug.String
 		}
 		item.Category = &cat
 	}
@@ -239,35 +252,32 @@ func ToProductListItem(row db.ListProductsRow, images []db.ProductImage) Product
 	return item
 }
 
+func ToProductListItem(row db.ListProductsRow, images []db.ProductImage) ProductListItem {
+	return toProductListItem(productListFields{
+		ID:           row.ID,
+		Title:        row.Title,
+		Price:        row.Price,
+		Stock:        row.Stock,
+		CreatedAt:    row.CreatedAt,
+		StoreID:      row.StoreID,
+		StoreName:    row.StoreName,
+		CategoryID:   row.CategoryID,
+		CategoryName: row.CategoryName,
+		CategorySlug: row.CategorySlug,
+	}, images)
+}
+
 func ToProductListItemFromStoreRow(row db.ListProductsByStoreIDRow, images []db.ProductImage) ProductListItem {
-	item := ProductListItem{
-		ID:        row.ID,
-		Title:     row.Title,
-		Price:     NumericToStr(row.Price),
-		Stock:     int(row.Stock),
-		Images:    toProductImages(images),
-		CreatedAt: row.CreatedAt.Time,
-	}
-
-	if row.StoreName.Valid {
-		item.Store = &ProductStoreInfo{
-			ID:   row.StoreID,
-			Name: row.StoreName.String,
-		}
-	}
-
-	if row.CategoryName.Valid {
-		cat := CategoryResponse{
-			Name: row.CategoryName.String,
-		}
-		if row.CategoryID.Valid {
-			cat.ID = row.CategoryID.Int64
-		}
-		if row.CategorySlug.Valid {
-			cat.Slug = row.CategorySlug.String
-		}
-		item.Category = &cat
-	}
-
-	return item
+	return toProductListItem(productListFields{
+		ID:           row.ID,
+		Title:        row.Title,
+		Price:        row.Price,
+		Stock:        row.Stock,
+		CreatedAt:    row.CreatedAt,
+		StoreID:      row.StoreID,
+		StoreName:    row.StoreName,
+		CategoryID:   row.CategoryID,
+		CategoryName: row.CategoryName,
+		CategorySlug: row.CategorySlug,
+	}, images)
 }

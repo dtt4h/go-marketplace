@@ -32,7 +32,7 @@ func NewProductHandler(service ProductService) *ProductHandler {
 func (h *ProductHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.ListCategories(r.Context())
 	if err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrInvalidSort):
 			httputil.ValidationError(w, err.Error(), nil)
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -106,7 +106,7 @@ func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrProductNotFound):
 			httputil.NotFound(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -149,7 +149,7 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 			errors.Is(err, ErrTitleRequired), errors.Is(err, ErrTitleTooLong):
 			httputil.ValidationError(w, err.Error(), nil)
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -202,7 +202,7 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 			errors.Is(err, ErrTitleRequired), errors.Is(err, ErrTitleTooLong):
 			httputil.ValidationError(w, err.Error(), nil)
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -242,7 +242,7 @@ func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrForbidden):
 			httputil.Forbidden(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -286,7 +286,7 @@ func (h *ProductHandler) ModerateProduct(w http.ResponseWriter, r *http.Request)
 		case errors.Is(err, ErrInvalidStatus):
 			httputil.ValidationError(w, err.Error(), nil)
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -316,7 +316,7 @@ func (h *ProductHandler) ListProductsByStore(w http.ResponseWriter, r *http.Requ
 
 	items, total, err := h.service.ListProductsByStore(r.Context(), storeID, page, limit)
 	if err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 

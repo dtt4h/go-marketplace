@@ -26,6 +26,7 @@ type ProductRepository interface {
 	GetProductStoreOwner(ctx context.Context, productID int64) (db.GetProductStoreOwnerRow, error)
 	GetImageByID(ctx context.Context, id int64) (db.ProductImage, error)
 	DeleteImageByID(ctx context.Context, id int64) error
+	CreateProductImage(ctx context.Context, productID int64, url string, position int32) (db.ProductImage, error)
 }
 
 type productRepository struct {
@@ -198,6 +199,15 @@ func (r *productRepository) GetImageByID(ctx context.Context, id int64) (db.Prod
 
 func (r *productRepository) DeleteImageByID(ctx context.Context, id int64) error {
 	return r.queries.DeleteImageByID(ctx, id)
+}
+
+func (r *productRepository) CreateProductImage(ctx context.Context, productID int64, url string, position int32) (db.ProductImage, error) {
+	return r.queries.CreateProductImage(ctx, db.CreateProductImageParams{
+		ProductID: productID,
+		Url:       url,
+		Position:  position,
+		ObjectKey: pgutil.NullText(&url),
+	})
 }
 
 func (r *productRepository) ListProductsByStoreID(ctx context.Context, storeID int64, page, limit int) ([]db.ListProductsByStoreIDRow, int64, error) {

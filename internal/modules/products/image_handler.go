@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	_ "github.com/dtt4h/go-marketplace/internal/server/dtos"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
 	"github.com/dtt4h/go-marketplace/pkg/pgutil"
@@ -43,7 +42,7 @@ func NewImageHandler(service ImageUploadService) *ImageHandler {
 // @Router       /products/{id}/images [post]
 func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	if h.service == nil {
-		httputil.InternalError(w, "image storage is not configured")
+		httputil.InternalError(w, r, "image storage is not configured")
 		return
 	}
 
@@ -72,7 +71,7 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		n, _ := io.ReadFull(file, buf)
 		contentType = http.DetectContentType(buf[:n])
 		if _, err := file.Seek(0, io.SeekStart); err != nil {
-			httputil.InternalError(w, "failed to read file")
+			httputil.InternalError(w, r, "failed to read file")
 			return
 		}
 	}
@@ -85,12 +84,22 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	limitedReader := io.LimitReader(file, 10*1024*1024)
 	data, err := io.ReadAll(limitedReader)
 	if err != nil {
-		httputil.InternalError(w, "failed to read file")
+		httputil.InternalError(w, r, "failed to read file")
 		return
 	}
 
 	if len(data) == 0 {
 		httputil.ValidationError(w, "file is empty", nil)
+		return
+	}
+
+	if err := validateImageSize(data); err != nil {
+		httputil.ValidationError(w, err.Error(), nil)
+		return
+	}
+
+	if err := validateImageDimensions(data); err != nil {
+		httputil.ValidationError(w, err.Error(), nil)
 		return
 	}
 
@@ -102,7 +111,7 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrForbidden):
 			httputil.Forbidden(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -123,7 +132,7 @@ func (h *ImageHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 // @Router       /products/images/{id} [delete]
 func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	if h.service == nil {
-		httputil.InternalError(w, "image storage is not configured")
+		httputil.InternalError(w, r, "image storage is not configured")
 		return
 	}
 
@@ -147,7 +156,7 @@ func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrForbidden):
 			httputil.Forbidden(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -169,7 +178,7 @@ func (h *ImageHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 // @Router       /products/{id}/images/presigned [get]
 func (h *ImageHandler) GetPresignedUploadURL(w http.ResponseWriter, r *http.Request) {
 	if h.service == nil {
-		httputil.InternalError(w, "image storage is not configured")
+		httputil.InternalError(w, r, "image storage is not configured")
 		return
 	}
 
@@ -200,7 +209,7 @@ func (h *ImageHandler) GetPresignedUploadURL(w http.ResponseWriter, r *http.Requ
 		case errors.Is(err, ErrForbidden):
 			httputil.Forbidden(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -221,4 +230,46 @@ func isAllowedImageType(contentType string) bool {
 		"image/svg+xml": true,
 	}
 	return allowed[contentType]
+}
+
+func validateImageSize(data []byte) error {
+	const maxSize = 10 * 1024 * 1024 // 10MB
+	if len(data) > maxSize {
+		return fmt.Errorf("file too large, maximum size is %d MB", maxSize/1024/1024)
+	}
+	return nil
+}
+
+func validateImageDimensions(data []byte) error {
+	// Simple dimension check for JPEG, PNG, GIF
+	if len(data) < 10 {
+		return errors.New("invalid image file")
+	}
+
+	// Check for basic image magic bytes
+	magic := data[:4]
+	isImage := false
+
+	// JPEG: FF D8 FF
+	if len(data) >= 3 && magic[0] == 0xFF && magic[1] == 0xD8 && magic[2] == 0xFF {
+		isImage = true
+	}
+	// PNG: 89 50 4E 47
+	if len(data) >= 4 && magic[0] == 0x89 && magic[1] == 0x50 && magic[2] == 0x4E && magic[3] == 0x47 {
+		isImage = true
+	}
+	// GIF: GIF8
+	if len(data) >= 4 && string(magic[:4]) == "GIF8" {
+		isImage = true
+	}
+	// WebP: RIFF....WEBP
+	if len(data) >= 12 && string(magic[:4]) == "RIFF" && string(data[8:12]) == "WEBP" {
+		isImage = true
+	}
+
+	if !isImage {
+		return errors.New("invalid image format")
+	}
+
+	return nil
 }

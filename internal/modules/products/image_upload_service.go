@@ -7,9 +7,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	"github.com/dtt4h/go-marketplace/internal/storage"
 	"github.com/dtt4h/go-marketplace/pkg/pgutil"
@@ -28,12 +25,25 @@ type ImageUploadService interface {
 type imageUploadService struct {
 	repo  ProductRepository
 	store storage.ObjectStorage
-	pool  *pgxpool.Pool
 }
 
 // NewImageUploadService creates a new ImageUploadService.
-func NewImageUploadService(repo ProductRepository, store storage.ObjectStorage, pool *pgxpool.Pool) ImageUploadService {
-	return &imageUploadService{repo: repo, store: store, pool: pool}
+func NewImageUploadService(repo ProductRepository, store storage.ObjectStorage) ImageUploadService {
+	return &imageUploadService{repo: repo, store: store}
+}
+
+func (s *imageUploadService) checkProductOwnership(ctx context.Context, productID, userID int64) error {
+	row, err := s.repo.GetProductStoreOwner(ctx, productID)
+	if err != nil {
+		if pgutil.IsNoRows(err) {
+			return ErrProductNotFound
+		}
+		return fmt.Errorf("check ownership: %w", err)
+	}
+	if row.StoreOwnerID != userID {
+		return ErrForbidden
+	}
+	return nil
 }
 
 func (s *imageUploadService) UploadImage(ctx context.Context, productID int64, userID int64, reader io.Reader, size int64, contentType string) (dtos.ProductImageResponse, error) {
@@ -41,15 +51,8 @@ func (s *imageUploadService) UploadImage(ctx context.Context, productID int64, u
 		return dtos.ProductImageResponse{}, ErrStorageNotConfigured
 	}
 
-	row, err := s.repo.GetProductStoreOwner(ctx, productID)
-	if err != nil {
-		if pgutil.IsNoRows(err) {
-			return dtos.ProductImageResponse{}, ErrProductNotFound
-		}
-		return dtos.ProductImageResponse{}, fmt.Errorf("check ownership: %w", err)
-	}
-	if row.StoreOwnerID != userID {
-		return dtos.ProductImageResponse{}, ErrForbidden
+	if err := s.checkProductOwnership(ctx, productID, userID); err != nil {
+		return dtos.ProductImageResponse{}, err
 	}
 
 	key, err := s.store.Upload(ctx, reader, size, storage.UploadOptions{
@@ -66,31 +69,14 @@ func (s *imageUploadService) UploadImage(ctx context.Context, productID int64, u
 
 	position := int32(len(images))
 
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return dtos.ProductImageResponse{}, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	q := db.New(tx)
-
-	img, err := q.CreateProductImage(ctx, db.CreateProductImageParams{
-		ProductID: productID,
-		Url:       key,
-		Position:  position,
-		ObjectKey: pgutil.NullText(&key),
-	})
+	img, err := s.repo.CreateProductImage(ctx, productID, key, position)
 	if err != nil {
 		return dtos.ProductImageResponse{}, fmt.Errorf("create image record: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return dtos.ProductImageResponse{}, fmt.Errorf("commit tx: %w", err)
-	}
-
 	return dtos.ProductImageResponse{
 		ID:       img.ID,
-		URL:      key,
+		URL:      img.Url,
 		Position: img.Position,
 	}, nil
 }
@@ -105,15 +91,8 @@ func (s *imageUploadService) DeleteImage(ctx context.Context, imageID int64, use
 		return fmt.Errorf("get image: %w", err)
 	}
 
-	row, err := s.repo.GetProductStoreOwner(ctx, img.ProductID)
-	if err != nil {
-		if pgutil.IsNoRows(err) {
-			return ErrProductNotFound
-		}
-		return fmt.Errorf("check ownership: %w", err)
-	}
-	if row.StoreOwnerID != userID {
-		return ErrForbidden
+	if err := s.checkProductOwnership(ctx, img.ProductID, userID); err != nil {
+		return err
 	}
 
 	if img.ObjectKey.Valid {
@@ -136,15 +115,8 @@ func (s *imageUploadService) GetPresignedUploadURL(ctx context.Context, productI
 		return "", ErrStorageNotConfigured
 	}
 
-	row, err := s.repo.GetProductStoreOwner(ctx, productID)
-	if err != nil {
-		if pgutil.IsNoRows(err) {
-			return "", ErrProductNotFound
-		}
-		return "", fmt.Errorf("check ownership: %w", err)
-	}
-	if row.StoreOwnerID != userID {
-		return "", ErrForbidden
+	if err := s.checkProductOwnership(ctx, productID, userID); err != nil {
+		return "", err
 	}
 
 	url, err := s.store.PresignedPutObject(ctx, objectKey, 15*time.Minute)
@@ -165,15 +137,8 @@ func (s *imageUploadService) GetPresignedDownloadURL(ctx context.Context, imageI
 		return "", fmt.Errorf("get image: %w", err)
 	}
 
-	row, err := s.repo.GetProductStoreOwner(ctx, img.ProductID)
-	if err != nil {
-		if pgutil.IsNoRows(err) {
-			return "", ErrProductNotFound
-		}
-		return "", fmt.Errorf("check ownership: %w", err)
-	}
-	if row.StoreOwnerID != userID {
-		return "", ErrForbidden
+	if err := s.checkProductOwnership(ctx, img.ProductID, userID); err != nil {
+		return "", err
 	}
 
 	url, err := s.store.PresignedGetObject(ctx, img.ObjectKey.String, time.Duration(expirySeconds)*time.Second)
