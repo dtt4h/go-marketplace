@@ -204,13 +204,21 @@ type Category struct {
 }
 
 type Order struct {
-	ID        int64              `json:"id"`
-	UserID    int64              `json:"userId"`
-	Status    OrderStatus        `json:"status"`
-	Total     pgtype.Numeric     `json:"total"`
-	Address   string             `json:"address"`
-	CreatedAt pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
+	ID                int64              `json:"id"`
+	UserID            pgtype.Int8        `json:"userId"`
+	Status            OrderStatus        `json:"status"`
+	Total             pgtype.Numeric     `json:"total"`
+	Address           string             `json:"address"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt         pgtype.Timestamptz `json:"updatedAt"`
+	PublicToken       pgtype.Text        `json:"publicToken"`
+	CustomerFirstName pgtype.Text        `json:"customerFirstName"`
+	CustomerLastName  pgtype.Text        `json:"customerLastName"`
+	CustomerEmail     pgtype.Text        `json:"customerEmail"`
+	CustomerPhone     pgtype.Text        `json:"customerPhone"`
+	DeliveryMethod    pgtype.Text        `json:"deliveryMethod"`
+	DeliveryCost      pgtype.Numeric     `json:"deliveryCost"`
+	TrackingNumber    pgtype.Text        `json:"trackingNumber"`
 }
 
 type OrderItem struct {
@@ -260,6 +268,16 @@ type RefreshToken struct {
 	Token     string             `json:"token"`
 	ExpiresAt pgtype.Timestamptz `json:"expiresAt"`
 	CreatedAt pgtype.Timestamptz `json:"createdAt"`
+}
+
+type SellerApplication struct {
+	ID          int64              `json:"id"`
+	UserID      int64              `json:"userId"`
+	StoreName   string             `json:"storeName"`
+	Description pgtype.Text        `json:"description"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt   pgtype.Timestamptz `json:"updatedAt"`
 }
 
 type Store struct {

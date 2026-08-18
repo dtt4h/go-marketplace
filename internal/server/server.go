@@ -42,7 +42,7 @@ func (s *Server) setupMiddleware() {
 	s.router.Use(chimw.RealIP)
 	s.router.Use(mw.Logger(s.log))
 	s.router.Use(chimw.Recoverer)
-	s.router.Use(mw.CORS)
+	s.router.Use(mw.CORS(s.cfg))
 }
 
 func (s *Server) Start() error {

@@ -2,7 +2,10 @@ package httputil
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
+
+	chimw "github.com/go-chi/chi/v5/middleware"
 )
 
 type APIError struct {
@@ -66,7 +69,13 @@ func Conflict(w http.ResponseWriter, message string) {
 	Error(w, http.StatusConflict, "CONFLICT", message)
 }
 
-func InternalError(w http.ResponseWriter, _ string) {
+func InternalError(w http.ResponseWriter, r *http.Request, msg string) {
+	slog.Error("internal error",
+		slog.String("error", msg),
+		slog.String("path", r.URL.Path),
+		slog.String("method", r.Method),
+		slog.String("request_id", chimw.GetReqID(r.Context())),
+	)
 	Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
 }
 

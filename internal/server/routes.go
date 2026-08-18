@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -11,9 +12,11 @@ import (
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/modules/auth"
 	"github.com/dtt4h/go-marketplace/internal/modules/cart"
+	"github.com/dtt4h/go-marketplace/internal/modules/notifications"
 	"github.com/dtt4h/go-marketplace/internal/modules/orders"
 	"github.com/dtt4h/go-marketplace/internal/modules/payments"
 	"github.com/dtt4h/go-marketplace/internal/modules/products"
+	"github.com/dtt4h/go-marketplace/internal/modules/sellerapplications"
 	"github.com/dtt4h/go-marketplace/internal/modules/users"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
 )
@@ -36,6 +39,7 @@ func (s *Server) setupRoutes() {
 		s.registerCartRoutes(r)
 		s.registerOrderRoutes(r)
 		s.registerPaymentRoutes(r)
+		s.registerSellerApplicationRoutes(r)
 	})
 }
 
@@ -44,15 +48,17 @@ func (s *Server) registerAuthRoutes(r chi.Router) {
 
 	authRepo := auth.NewAuthRepository(queries)
 	authSvc := auth.NewAuthService(authRepo, s.cfg)
-	authHandler := auth.NewAuthHandler(authSvc)
+	authHandler := auth.NewAuthHandler(authSvc, s.cfg.DevMode)
 
-	r.Post("/auth/register", authHandler.Register)
-	r.Post("/auth/login", authHandler.Login)
+	authRL := mw.NewRateLimiter(10, time.Minute)
+
+	r.With(mw.RateLimit(authRL)).Post("/auth/register", authHandler.Register)
+	r.With(mw.RateLimit(authRL)).Post("/auth/login", authHandler.Login)
 	r.Post("/auth/refresh", authHandler.Refresh)
 	r.With(mw.JWTAuth(s.cfg)).Post("/auth/logout", authHandler.Logout)
-	
-	r.Post("/auth/forgot-password", authHandler.ForgotPassword)
-	r.Post("/auth/reset-password", authHandler.ResetPassword)
+
+	r.With(mw.RateLimit(authRL)).Post("/auth/forgot-password", authHandler.ForgotPassword)
+	r.With(mw.RateLimit(authRL)).Post("/auth/reset-password", authHandler.ResetPassword)
 }
 
 func (s *Server) registerUserRoutes(r chi.Router) {
@@ -92,7 +98,7 @@ func (s *Server) registerProductRoutes(r chi.Router) {
 		Patch("/products/{id}/moderate", productHandler.ModerateProduct)
 
 	if s.store != nil {
-		imageSvc := products.NewImageUploadService(productRepo, s.store, s.db)
+		imageSvc := products.NewImageUploadService(productRepo, s.store)
 		imageHandler := products.NewImageHandler(imageSvc)
 
 		r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
@@ -108,7 +114,7 @@ func (s *Server) registerCartRoutes(r chi.Router) {
 	queries := db.New(s.db)
 
 	cartRepo := cart.NewCartRepository(queries)
-	cartSvc := cart.NewCartService(cartRepo, s.db)
+	cartSvc := cart.NewCartService(cartRepo)
 	cartHandler := cart.NewCartHandler(cartSvc)
 
 	r.With(mw.JWTAuth(s.cfg)).Get("/cart", cartHandler.GetCart)
@@ -123,32 +129,106 @@ func (s *Server) registerOrderRoutes(r chi.Router) {
 
 	orderRepo := orders.NewOrderRepository(queries)
 	userRepo := users.NewUserRepository(queries, s.db)
-	paymentRepo := payments.NewPaymentRepository(queries, s.db)
-	paymentSvc := payments.NewPaymentService(paymentRepo, orderRepo, s.db)
-	orderSvc := orders.NewOrderService(orderRepo, userRepo, paymentSvc, s.db, s.log)
-	orderHandler := orders.NewOrderHandler(orderSvc)
 
-	r.Post("/orders", orderHandler.CreateOrder)
+	// Create shared notification service
+	emailSvc := notifications.NewEmailService(s.cfg.SMTP, s.log)
+	receiptSvc := notifications.NewReceiptService()
+	notifSvc := notifications.NewNotificationService(emailSvc, receiptSvc, s.log)
+
+	// Create payment service once and share it
+	paymentRepo := payments.NewPaymentRepository(queries, s.db)
+	paymentSvc := payments.NewPaymentService(paymentRepo, orderRepo, userRepo, s.db, notifSvc, s.log)
+
+	orderSvc := orders.NewOrderService(orderRepo, userRepo, paymentSvc, notifSvc, s.db, s.log)
+	orderHandler := orders.NewOrderHandler(orderSvc)
+	paymentHandler := payments.NewPaymentHandler(paymentSvc, s.cfg.Payments.WebhookSecret)
+
+	// Admin endpoints
+	adminOrderRepo := orders.NewAdminOrderRepository(queries)
+	adminOrderSvc := orders.NewAdminOrderService(adminOrderRepo, userRepo)
+	adminOrderHandler := orders.NewAdminOrderHandler(adminOrderSvc)
+
+	// Admin stats
+	adminStatsRepo := orders.NewAdminStatsRepository(queries)
+	adminStatsSvc := orders.NewAdminStatsService(adminStatsRepo)
+	adminStatsHandler := orders.NewAdminStatsHandler(adminStatsSvc)
+
+	// Rate limiters
+	orderRL := mw.NewRateLimiter(20, time.Minute)
+	paymentRL := mw.NewRateLimiter(10, time.Minute)
+
+	// Guest checkout — no auth required
+	r.With(mw.RateLimit(orderRL)).Post("/orders", orderHandler.CreateOrder)
+	r.Get("/orders/public/{public_token}", orderHandler.GetPublicOrder)
+	r.With(mw.RateLimit(paymentRL)).Post("/orders/public/{public_token}/payment", paymentHandler.CreateGuestPayment)
+
+	// Authenticated user orders
 	r.With(mw.JWTAuth(s.cfg)).Get("/orders/me", orderHandler.ListOrdersByUser)
 	r.With(mw.JWTAuth(s.cfg)).Get("/orders/me/{id}", orderHandler.GetOrder)
 
+	// Seller endpoints
 	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
 		Get("/orders/seller", orderHandler.ListOrdersBySeller)
 	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
 		Patch("/orders/{id}/status", orderHandler.UpdateOrderStatus)
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleSeller))).
+		Patch("/orders/{id}/tracking", orderHandler.UpdateOrderTracking)
+
+	// Admin endpoints
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
+		Get("/admin/orders", adminOrderHandler.ListAllOrders)
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
+		Get("/admin/orders/status", adminOrderHandler.ListOrdersByStatus)
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
+		Get("/admin/orders/user", adminOrderHandler.ListOrdersByUser)
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
+		Get("/admin/orders/{id}", adminOrderHandler.GetOrderDetail)
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
+		Get("/admin/stats", adminStatsHandler.GetStats)
 }
 
 func (s *Server) registerPaymentRoutes(r chi.Router) {
 	queries := db.New(s.db)
 
+	// Reuse the same notification service pattern
+	emailSvc := notifications.NewEmailService(s.cfg.SMTP, s.log)
+	receiptSvc := notifications.NewReceiptService()
+	notifSvc := notifications.NewNotificationService(emailSvc, receiptSvc, s.log)
+
 	paymentRepo := payments.NewPaymentRepository(queries, s.db)
 	orderRepo := orders.NewOrderRepository(queries)
-	paymentSvc := payments.NewPaymentService(paymentRepo, orderRepo, s.db)
-	paymentHandler := payments.NewPaymentHandler(paymentSvc)
+	userRepo := users.NewUserRepository(queries, s.db)
+	paymentSvc := payments.NewPaymentService(paymentRepo, orderRepo, userRepo, s.db, notifSvc, s.log)
+	paymentHandler := payments.NewPaymentHandler(paymentSvc, s.cfg.Payments.WebhookSecret)
 
 	r.With(mw.JWTAuth(s.cfg)).Post("/payments", paymentHandler.CreatePayment)
 	r.With(mw.JWTAuth(s.cfg)).Get("/payments/me", paymentHandler.ListPaymentsByUser)
 	r.With(mw.JWTAuth(s.cfg)).Get("/payments/{id}", paymentHandler.GetPayment)
 	r.Post("/payments/webhook", paymentHandler.Webhook)
 	r.With(mw.JWTAuth(s.cfg)).Post("/payments/{id}/refund", paymentHandler.RefundPayment)
+}
+
+func (s *Server) registerSellerApplicationRoutes(r chi.Router) {
+	queries := db.New(s.db)
+
+	appRepo := sellerapplications.NewSellerApplicationRepository(queries)
+	userRepo := users.NewUserRepository(queries, s.db)
+
+	// Create notification service for seller applications
+	emailSvc := notifications.NewEmailService(s.cfg.SMTP, s.log)
+	receiptSvc := notifications.NewReceiptService()
+	notifSvc := notifications.NewNotificationService(emailSvc, receiptSvc, s.log)
+
+	appSvc := sellerapplications.NewSellerApplicationService(appRepo, userRepo, notifSvc)
+	appHandler := sellerapplications.NewSellerApplicationHandler(appSvc)
+
+	// User-facing
+	r.With(mw.JWTAuth(s.cfg)).Post("/seller-applications", appHandler.Create)
+	r.With(mw.JWTAuth(s.cfg)).Get("/seller-applications/me", appHandler.ListMine)
+
+	// Admin
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
+		Get("/admin/seller-applications", appHandler.ListPending)
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
+		Patch("/admin/seller-applications/{id}", appHandler.UpdateStatus)
 }
