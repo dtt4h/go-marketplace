@@ -118,6 +118,10 @@ func (r *authRepository) GetUserByResetToken(ctx context.Context, tokenHash stri
 		PasswordHash: row.PasswordHash,
 		Role:         row.Role,
 		Username:     row.Username,
+		AvatarUrl:    row.AvatarUrl,
+		Phone:        row.Phone,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}, nil
 }
 

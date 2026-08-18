@@ -13,11 +13,12 @@ import (
 // AuthHandler handles HTTP requests for authentication.
 type AuthHandler struct {
 	service AuthService
+	devMode bool
 }
 
 // NewAuthHandler creates a new AuthHandler.
-func NewAuthHandler(service AuthService) *AuthHandler {
-	return &AuthHandler{service: service}
+func NewAuthHandler(service AuthService, devMode bool) *AuthHandler {
+	return &AuthHandler{service: service, devMode: devMode}
 }
 
 // Register godoc
@@ -48,7 +49,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrUsernameTaken):
 			httputil.ErrorWithDetails(w, http.StatusConflict, "CONFLICT", err.Error(), map[string]string{"field": "username"})
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -80,7 +81,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrInvalidCredentials):
 			httputil.Unauthorized(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -111,7 +112,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 			h.clearRefreshCookie(w)
 			httputil.Unauthorized(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -136,7 +137,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.Logout(r.Context(), userID); err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 

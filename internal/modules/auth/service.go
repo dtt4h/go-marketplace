@@ -58,13 +58,7 @@ func (s *authService) Register(ctx context.Context, req dtos.RegisterRequest) (d
 		return dtos.AuthResponse{}, ErrWeakPassword
 	}
 
-	var role db.UserRole
-	switch req.Role {
-	case "seller":
-		role = db.UserRoleSeller
-	default:
-		role = db.UserRoleBuyer
-	}
+	role := db.UserRoleBuyer
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
 	if err != nil {
