@@ -47,9 +47,9 @@ func (r *paymentRepository) ListPaymentsByUserID(ctx context.Context, userID int
 	offset := int32((page - 1) * limit)
 
 	payments, err := r.queries.ListPaymentsByUserID(ctx, db.ListPaymentsByUserIDParams{
-		UserID: userID,
-		Limit:  int32(limit),
-		Offset: offset,
+		Column1: userID,
+		Limit:   int32(limit),
+		Offset:  offset,
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("list payments by user: %w", err)

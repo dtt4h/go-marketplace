@@ -49,9 +49,7 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 }
 
 const getPayment = `-- name: GetPayment :one
-SELECT id, order_id, amount, currency, status, provider, provider_payment_id, created_at, updated_at
-FROM payments
-WHERE id = $1
+SELECT id, order_id, amount, currency, status, provider, provider_payment_id, created_at, updated_at FROM payments WHERE id = $1
 `
 
 func (q *Queries) GetPayment(ctx context.Context, id int64) (Payment, error) {
@@ -72,9 +70,7 @@ func (q *Queries) GetPayment(ctx context.Context, id int64) (Payment, error) {
 }
 
 const getPaymentByOrderID = `-- name: GetPaymentByOrderID :one
-SELECT id, order_id, amount, currency, status, provider, provider_payment_id, created_at, updated_at
-FROM payments
-WHERE order_id = $1
+SELECT id, order_id, amount, currency, status, provider, provider_payment_id, created_at, updated_at FROM payments WHERE order_id = $1
 `
 
 func (q *Queries) GetPaymentByOrderID(ctx context.Context, orderID int64) (Payment, error) {
@@ -98,19 +94,19 @@ const listPaymentsByUserID = `-- name: ListPaymentsByUserID :many
 SELECT p.id, p.order_id, p.amount, p.currency, p.status, p.provider, p.provider_payment_id, p.created_at, p.updated_at
 FROM payments p
 JOIN orders o ON o.id = p.order_id
-WHERE o.user_id = $1
+WHERE o.user_id = $1::bigint
 ORDER BY p.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
 type ListPaymentsByUserIDParams struct {
-	UserID int64 `json:"userId"`
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	Column1 int64 `json:"column1"`
+	Limit   int32 `json:"limit"`
+	Offset  int32 `json:"offset"`
 }
 
 func (q *Queries) ListPaymentsByUserID(ctx context.Context, arg ListPaymentsByUserIDParams) ([]Payment, error) {
-	rows, err := q.db.Query(ctx, listPaymentsByUserID, arg.UserID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listPaymentsByUserID, arg.Column1, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -143,11 +139,11 @@ const listPaymentsByUserIDCount = `-- name: ListPaymentsByUserIDCount :one
 SELECT COUNT(*)
 FROM payments p
 JOIN orders o ON o.id = p.order_id
-WHERE o.user_id = $1
+WHERE o.user_id = $1::bigint
 `
 
-func (q *Queries) ListPaymentsByUserIDCount(ctx context.Context, userID int64) (int64, error) {
-	row := q.db.QueryRow(ctx, listPaymentsByUserIDCount, userID)
+func (q *Queries) ListPaymentsByUserIDCount(ctx context.Context, dollar_1 int64) (int64, error) {
+	row := q.db.QueryRow(ctx, listPaymentsByUserIDCount, dollar_1)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
