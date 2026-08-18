@@ -1,0 +1,113 @@
+@use '../../../../shared/styles/global.scss' as *;
+
+.table {
+  overflow: hidden;
+  border: 1px solid $grey91;
+  border-radius: 12px;
+  width: 100%;
+  background: white;
+}
+
+.tableHeader,
+.row {
+  display: grid;
+  grid-template-columns: minmax(240px, 2fr) 1fr 1fr 1fr 56px;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 20px;
+}
+
+.tableHeader {
+  border-bottom: 1px solid $grey91;
+  background: #f8fafc;
+  color: $azure65;
+  font-family: $inter;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.row {
+  border-bottom: 1px solid $grey953;
+  font-family: $inter;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:hover {
+    background: #f8fafc;
+  }
+}
+
+.productCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.productPreview {
+  flex: 0 0 40px;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, $grey953, $grey91);
+}
+
+.productName,
+.price {
+  color: $azure16;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stock {
+  color: $azure35;
+  font-size: 14px;
+}
+
+.status {
+  justify-self: start;
+  border-radius: 20px;
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.active {
+  background: $green93;
+  color: $green38;
+}
+
+.moderation {
+  background: #fdf3e3;
+  color: #b7791f;
+}
+
+.rejected {
+  background: #fdeaea;
+  color: $danger;
+}
+
+.editButton {
+  border: 1px solid $azure84;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  background: white;
+  color: $azure35;
+  cursor: pointer;
+
+  &:hover {
+    border-color: $azure52;
+    color: $azure52;
+  }
+}
+
+.emptyState {
+  padding: 32px;
+  color: $grey46;
+  font-family: $inter;
+}
