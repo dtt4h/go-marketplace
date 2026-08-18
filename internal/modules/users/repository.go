@@ -65,28 +65,43 @@ func (r *userRepository) UpdateUserRole(ctx context.Context, id int64, role db.U
 
 func getUserByIDRowToUser(row db.GetUserByIDRow) db.User {
 	return db.User{
-		ID:       row.ID,
-		Email:    row.Email,
-		Role:     row.Role,
-		Username: row.Username,
+		ID:           row.ID,
+		Email:        row.Email,
+		PasswordHash: row.PasswordHash,
+		Role:         row.Role,
+		Username:     row.Username,
+		AvatarUrl:    row.AvatarUrl,
+		Phone:        row.Phone,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}
 }
 
 func updateUserRowToUser(row db.UpdateUserRow) db.User {
 	return db.User{
-		ID:       row.ID,
-		Email:    row.Email,
-		Role:     row.Role,
-		Username: row.Username,
+		ID:           row.ID,
+		Email:        row.Email,
+		PasswordHash: row.PasswordHash,
+		Role:         row.Role,
+		Username:     row.Username,
+		AvatarUrl:    row.AvatarUrl,
+		Phone:        row.Phone,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}
 }
 
 func updateUserRoleRowToUser(row db.UpdateUserRoleRow) db.User {
 	return db.User{
-		ID:       row.ID,
-		Email:    row.Email,
-		Role:     row.Role,
-		Username: row.Username,
+		ID:           row.ID,
+		Email:        row.Email,
+		PasswordHash: row.PasswordHash,
+		Role:         row.Role,
+		Username:     row.Username,
+		AvatarUrl:    row.AvatarUrl,
+		Phone:        row.Phone,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}
 }
 

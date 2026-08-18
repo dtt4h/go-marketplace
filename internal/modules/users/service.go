@@ -114,14 +114,15 @@ func (s *userService) UpdateStore(ctx context.Context, userID int64, req dtos.Up
 		return dtos.StoreResponse{}, fmt.Errorf("get store by user id: %w", err)
 	}
 
-	_, err = s.repo.UpdateStore(ctx, store.ID, &req.Name, req.Description, req.LogoURL)
-	if err != nil {
-		return dtos.StoreResponse{}, fmt.Errorf("update store: %w", err)
+	if req.Name != nil {
+		if err := validateStoreName(*req.Name); err != nil {
+			return dtos.StoreResponse{}, err
+		}
 	}
 
-	updated, err := s.repo.GetStoreByUserID(ctx, userID)
+	updated, err := s.repo.UpdateStore(ctx, store.ID, req.Name, req.Description, req.LogoURL)
 	if err != nil {
-		return dtos.StoreResponse{}, fmt.Errorf("get updated store: %w", err)
+		return dtos.StoreResponse{}, fmt.Errorf("update store: %w", err)
 	}
 
 	return dtos.ToStoreResponse(updated), nil
