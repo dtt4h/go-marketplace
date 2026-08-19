@@ -51,17 +51,21 @@ marketplace/
 │   │   └── middleware/           # Слой middleware
 │   │       ├── auth.go           # JWTAuth, RoleGuard, UserIDFromCtx
 │   │       ├── cors.go           # CORS
-│   │       └── logger.go         # Логирование запросов
+│   │       ├── logger.go         # Логирование запросов
+│   │       └── ratelimit.go      # Rate limiting (IP-based token bucket)
 │   ├── database/                 # Подключение к БД, sqlc-сгенерированный код
 │   │   ├── database.go           # Подключение pgxpool
 │   │   └── sqlc/                 # Сгенерировано sqlc (не редактировать вручную!)
-│   │       ├── db.go             # Конструктор Queries
+│   │       ├── db.go             # Конструктор Queries, DBPool interface
 │   │       ├── models.go         # User, Store, Product, Order, Payment, все enum
 │   │       ├── auth.sql.go       # Запросы из sql/queries/auth.sql
 │   │       ├── users.sql.go      # Запросы из sql/queries/users.sql
 │   │       ├── products.sql.go   # Запросы из sql/queries/products.sql
 │   │       ├── orders.sql.go     # Запросы из sql/queries/orders.sql
-│   │       └── payments.sql.go   # Запросы из sql/queries/payments.sql
+│   │       ├── payments.sql.go   # Запросы из sql/queries/payments.sql
+│   │       ├── cart.sql.go       # Запросы из sql/queries/cart.sql
+│   │       ├── seller_applications.sql.go # Заявки продавцов
+│   │       └── models.go         # Модели (включая Order.ExpiresAt, Product.RejectionReason)
 │   ├── logger/                   # Настройка slog
 │   │   └── logger.go
 │   ├── storage/                  # S3/MinIO объектное хранилище
@@ -72,23 +76,41 @@ marketplace/
 │       │   ├── service.go        # bcrypt, JWT, refresh-ротация
 │       │   └── repository.go     # Обёртка над sqlc.Queries
 │       ├── users/                # Пользователи и магазины
-│       │   ├── handler.go        # GetProfile, UpdateProfile, CreateStore
+│       │   ├── handler.go        # GetProfile, UpdateProfile, GetStore, UpdateStore
 │       │   ├── service.go        # Бизнес-логика профиля и магазина
-│       │   └── repository.go     # Запросы к users, stores
+│       │   └── repository.go     # Запросы к users, stores; CreateStoreWithRole (транзакция)
 │       ├── products/             # Товары и категории
-│       │   ├── handler.go        # CRUD товаров, категории, модерация
+│       │   ├── handler.go        # CRUD товаров, категории, модерация, ListProductsByStatus
 │       │   ├── image_handler.go  # Загрузка/удаление изображений
-│       │   ├── service.go        # Валидация, бизнес-логика
+│       │   ├── service.go        # Валидация, бизнес-логика, ModerateProductWithReason
 │       │   ├── image_upload_service.go # Работа с S3 для изображений
 │       │   └── repository.go     # Запросы к products, product_images, categories
 │       ├── orders/               # Заказы
-│       │   ├── handler.go        # CreateOrder, GetOrder, ListOrders, UpdateStatus
-│       │   ├── service.go        # Транзакции, расчёт суммы, статус-машина
-│       │   └── repository.go     # Запросы к orders, order_items
-│       └── payments/             # Платежи
-│           ├── handler.go        # CreatePayment, GetPayment, Webhook, Refund
-│           ├── service.go        # Платёжная логика, webhook-обработка
-│           └── repository.go     # Запросы к payments
+│       │   ├── handler.go        # CreateOrder, GetOrder, ListOrders, UpdateStatus, Tracking
+│       │   ├── service.go        # Транзакции, расчёт суммы, статус-машина, delivery cost=0
+│       │   ├── expirer.go        # OrderExpirer — авто-отмена просроченных заказов
+│       │   ├── repository.go     # Запросы к orders, order_items
+│       │   ├── admin_handler.go  # Админ-эндпоинты заказов
+│       │   ├── admin_service.go  # Админ-логика заказов
+│       │   ├── admin_repository.go # Админ-запросы
+│       │   ├── admin_stats_handler.go  # Статистика (админ)
+│       │   ├── admin_stats_service.go  # Логика статистики
+│       │   └── admin_stats_repository.go # Запросы статистики
+│       ├── payments/             # Платежи
+│       │   ├── handler.go        # CreatePayment, GetPayment, Webhook, Refund, GuestPayment
+│       │   ├── service.go        # Платёжная логика, webhook-обработка
+│       │   └── repository.go     # Запросы к payments
+│       ├── cart/                 # Корзина (серверная, для авторизованных)
+│       │   ├── handler.go        # GetCart, AddItem, UpdateItem, RemoveItem, Clear
+│       │   └── service.go        # Бизнес-логика корзины
+│       ├── sellerapplications/   # Заявки на статус продавца
+│       │   ├── handler.go        # Create, ListMine, ListPending, UpdateStatus
+│       │   ├── service.go        # Approve→CreateStoreWithRole, Reject→email с reason
+│       │   └── repository.go     # Запросы к seller_applications
+│       └── notifications/        # Email-уведомления
+│           ├── email.go          # SMTP-отправка
+│           ├── receipt.go        # Генерация HTML-чеков
+│           └── service.go        # Оркестрация уведомлений
 ├── pkg/                          # Переиспользуемые утилиты
 │   ├── httputil/                 # HTTP-хелперы
 │   │   ├── pagination.go         # ParsePagination
@@ -169,12 +191,13 @@ Middleware применяется **к конкретному эндпоинту
 ## Middleware (порядок применения)
 
 1. `RequestID` — генерация уникального ID запроса
-2. `RealIP` — определение реального IP
+2. `RealIP` — определение реального IP (X-Forwarded-For → X-Real-IP → RemoteAddr)
 3. `Logger` — логирование запросов/ответов (slog)
 4. `Recoverer` — перехват паник
 5. `CORS` — разрешение кросс-доменных запросов
-6. `JWTAuth` — проверка JWT (только на защищённые роуты)
-7. `RoleGuard` — проверка роли (только на роуты с ролевой моделью)
+6. `RateLimit` — rate limiting по IP (token bucket, настраивается per-endpoint)
+7. `JWTAuth` — проверка JWT (только на защищённые роуты)
+8. `RoleGuard` — проверка роли (только на роуты с ролевой моделью)
 
 ## Аутентификация (Auth Module)
 
@@ -232,17 +255,24 @@ Middleware применяется **к конкретному эндпоинту
 ## Модуль Orders
 
 ### Создание заказа
-1. `user_id` берётся из тела запроса (`CreateOrderRequest.UserID`) — эндпоинт публичный, не требует JWT
-2. Валидация: `user_id > 0`, минимум 1 элемент, `quantity > 0`
+1. `user_id` берётся из JWT (если авторизован) или `null` (гостевой заказ)
+2. Валидация: минимум 1 элемент, `quantity > 0`, `delivery.address` — обязательное; для гостей — `customer.first_name/email/phone` обязательные
 3. В транзакции:
    - Для каждого товара: `DecrementProductStock` (атомарно списывает остаток, проверяет `stock >= quantity`)
    - Если товар не найден → `ErrProductNotFound` (404)
    - Если остаток недостаточен → `ErrInsufficientStock` (400)
    - Расчёт суммы: `price × quantity` для каждого элемента, суммирование
-   - Создание заказа + элементов заказа
+   - `delivery_cost` всегда 0 (сервер игнорирует клиентское значение — защита от подмены)
+   - Создание заказа + элементов заказа, `expires_at = now() + 24h`
 4. Возвращает детальную информацию о заказе
+5. Асинхронно (в goroutine с `context.Background()`) отправляет email-уведомления покупателю и продавцам
 
-> `POST /orders` не требует авторизации — `user_id` передаётся в теле запроса. Это позволяет собирать корзину без логина. При логине можно перенести гостевой заказ на реальный `user_id`.
+> `POST /orders` не требует авторизации. Гостевые заказы получают `public_token` для доступа без JWT. Авторизованные заказы привязываются к `user_id` из токена.
+
+### Автоматическая отмена просроченных заказов
+- `OrderExpirer` — фоновый процесс (тикер 5 минут), запускается в `main.go`
+- Находит заказы в статусе `pending` с `expires_at < now()`
+- В одной транзакции: переводит в `cancelled` и возвращает остатки товаров через `IncrementProductStock`
 
 ### Статус-машина заказов
 
@@ -262,6 +292,30 @@ pending ──(webhook)──► paid ──(seller)──► shipped ──(sel
 - `GET /orders/me/{id}` — покупатель (владелец) или продавец (товары которого в заказе)
 - `GET /orders/me` — только покупатель (свои заказы)
 - `GET /orders/seller` — только продавец (заказы с его товарами)
+- `GET /orders/public/{public_token}` — любой (по токену гостевого заказа)
+- `GET /admin/orders*` — только админ
+
+## Модуль Seller Applications
+
+### Поток подачи заявки
+1. Пользователь (buyer) отправляет `POST /seller-applications` с названием магазина
+2. Проверка: нет существующей pending-заявки
+3. Создаётся заявка со статусом `pending`
+4. Асинхронно отправляется email админу о новой заявке
+
+### Поток одобрения
+1. Админ отправляет `PATCH /admin/seller-applications/{id}` со статусом `approved`
+2. В одной транзакции (`CreateStoreWithRole`):
+   - Создаётся запись в `stores`
+   - Пользователь получает роль `seller`
+3. Асинхронно отправляется email пользователю об одобрении
+
+### Поток отклонения
+1. Админ отправляет `PATCH /admin/seller-applications/{id}` со статусом `rejected` и `reason`
+2. Заявка переводится в `rejected`
+3. Асинхронно отправляется email пользователю с причиной отклонения
+
+> Магазин создаётся **только** через одобрение заявки. Прямой эндпоинт `POST /users/me/store` удалён — это защита от обхода модерации.
 
 ## S3/MinIO хранилище
 
@@ -327,17 +381,23 @@ minio:
 
 ## Модуль Payments
 
-### Создание платежа
+### Создание платежа (авторизованный)
 1. Проверка: заказ существует, принадлежит пользователю
 2. Проверка: заказ в статусе `pending`
 3. Проверка: платёж для заказа ещё не создан (UNIQUE constraint)
 4. Создание платежа со статусом `pending`, provider=`mock`
+5. Возвращает `confirmation_url` для редиректа на платёжную страницу
+
+### Создание гостевого платежа
+1. По `public_token` находится гостевой заказ
+2. Те же проверки (статус `pending`, нет существующего платежа)
+3. Создание платежа, возврат `confirmation_url`
 
 ### Webhook
 1. Принимает `{order_id, provider_payment_id, status}`
-2. Допустимые статусы: `succeeded`, `failed`
+2. Допустимые статусы: `succeeded`, `failed`, `refunded`
 3. При `succeeded`: обновляет платёж, переводит заказ в `paid`
-4. При `failed`: обновляет платёж
+4. Асинхронно (в goroutine с `context.Background()`): отправляет email-чек и уведомление о смене статуса
 
 ### Возврат
 1. Проверка: платёж в статусе `succeeded`

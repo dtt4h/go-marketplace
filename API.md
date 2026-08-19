@@ -194,21 +194,10 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### POST `/users/me/store` 🔒
-Регистрация в качестве продавца (создание магазина). Автоматически меняет роль пользователя на `seller`.
+### GET `/users/me/store` 🔒
+Текущий магазин пользователя (для продавца).
 
-**Request:**
-```json
-{
-  "name": "Мой магазин",
-  "description": "Описание магазина",
-  "logo_url": "https://..."
-}
-```
-
-> Поля `description` и `logo_url` необязательные.
-
-**Response 201:**
+**Response 200:**
 ```json
 {
   "id": 1,
@@ -221,9 +210,126 @@ Authorization: Bearer <access_token>
 ```
 
 **Ошибки:**
-- `CONFLICT` (409) — магазин уже существует
+- `NOT_FOUND` (404) — магазин не найден (пользователь не продавец)
 
-> После создания магазина нужно заново выполнить `POST /auth/login`, чтобы получить access-токен с ролью `seller`.
+### PATCH `/users/me/store` 🔒
+Обновление магазина (название, описание, логотип). Только владелец магазина.
+
+**Request:**
+```json
+{
+  "name": "Новое название",
+  "description": "Новое описание",
+  "logo_url": "https://..."
+}
+```
+
+> Все поля необязательные — обновляются только переданные.
+
+**Response 200:** (как GET `/users/me/store`)
+
+**Ошибки:**
+- `NOT_FOUND` (404) — магазин не найден
+
+> Магазин создаётся **только** через одобрение заявки продавца (`PATCH /admin/seller-applications/{id}` со статусом `approved`). Прямого эндпоинта создания магазина нет — это защита от обхода модерации.
+
+---
+
+## Seller Applications
+
+### POST `/seller-applications` 🔒
+Подача заявки на статус продавца. После одобрения админом пользователь получает роль `seller` и магазин.
+
+**Request:**
+```json
+{
+  "store_name": "Мой магазин",
+  "description": "Описание магазина"
+}
+```
+
+**Правила валидации:**
+- `store_name` — обязательное
+- `description` — необязательное
+
+**Response 201:**
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "store_name": "Мой магазин",
+  "description": "Описание магазина",
+  "status": "pending",
+  "created_at": "2026-07-19T10:00:00Z",
+  "updated_at": "2026-07-19T10:00:00Z"
+}
+```
+
+**Ошибки:**
+- `CONFLICT` (409) — уже есть pending-заявка
+
+### GET `/seller-applications/me` 🔒
+Список заявок текущего пользователя.
+
+**Response 200:**
+```json
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "store_name": "Мой магазин",
+    "description": "Описание магазина",
+    "status": "pending",
+    "created_at": "2026-07-19T10:00:00Z",
+    "updated_at": "2026-07-19T10:00:00Z"
+  }
+]
+```
+
+### GET `/admin/seller-applications` 🔒 `[admin]`
+Список pending-заявок продавцов.
+
+**Query params:** `page` (default 1), `limit` (default 20, max 100)
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "store_name": "Мой магазин",
+      "description": "Описание магазина",
+      "status": "pending",
+      "created_at": "2026-07-19T10:00:00Z",
+      "updated_at": "2026-07-19T10:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 20
+}
+```
+
+### PATCH `/admin/seller-applications/{id}` 🔒 `[admin]`
+Одобрение или отклонение заявки продавца.
+
+**Request:**
+```json
+{
+  "status": "approved",
+  "reason": "Текст причины отклонения"
+}
+```
+
+> Допустимые статусы: `approved`, `rejected`. При `approved` пользователь получает роль `seller` и магазин создаётся в той же транзакции. `reason` используется при отклонении (подставляется в email).
+
+**Response 200:** (как POST `/seller-applications`)
+
+**Ошибки:**
+- `NOT_FOUND` (404) — заявка не найдена
+- `CONFLICT` (409) — заявка уже обработана
+- `VALIDATION_ERROR` (400) — невалидный статус
 
 ---
 
@@ -457,15 +563,55 @@ Authorization: Bearer <access_token>
 **Request:**
 ```json
 {
-  "status": "active"
+  "status": "rejected",
+  "reason": "Фото не соответствует описанию"
 }
 ```
 
-> Допустимые статусы: `active`, `rejected`, `archived`.
+> Допустимые статусы: `active`, `rejected`, `archived`. Поле `reason` обязательно при отклонении (`rejected`) — сохраняется в `rejection_reason` и подставляется в email продавцу.
 
-**Response 200:** (как GET `/products/{id}`)
+**Response 200:** (как GET `/products/{id}`, включая `rejection_reason` при отклонении)
 
 **Ошибки:**
+- `FORBIDDEN` (403) — не админ
+- `VALIDATION_ERROR` (400) — невалидный статус
+
+### GET `/admin/products` 🔒 `[admin]`
+Список товаров по статусу модерации (для админ-панели).
+
+**Query params:**
+
+| Параметр | Тип | Описание |
+|----------|-----|----------|
+| `status` | string | Статус: `pending`, `active`, `rejected`, `archived` (обязательный) |
+| `page` | int | Страница (default 1) |
+| `limit` | int | Лимит (default 20, max 100) |
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "title": "Ноутбук",
+      "price": "50000",
+      "stock": 10,
+      "status": "pending",
+      "store": {
+        "id": 1,
+        "name": "ТехноМир"
+      },
+      "created_at": "2026-07-19T10:00:00Z"
+    }
+  ],
+  "total": 3,
+  "page": 1,
+  "limit": 20
+}
+```
+
+**Ошибки:**
+- `VALIDATION_ERROR` (400) — невалидный статус
 - `FORBIDDEN` (403) — не админ
 
 ---
@@ -473,25 +619,48 @@ Authorization: Bearer <access_token>
 ## Orders
 
 ### POST `/orders`
-Создание заказа. Списывает товар со склада в транзакции. Не требует авторизации — `user_id` передаётся в теле запроса.
+Создание заказа. Списывает товар со склада в транзакции. Не требует авторизации: для авторизованных пользователей `user_id` берётся из JWT, для гостей — заполняются `customer` и `delivery`.
 
-**Request:**
+**Request (авторизованный пользователь):**
 ```json
 {
-  "user_id": 1,
   "items": [
     {"product_id": 1, "quantity": 2},
     {"product_id": 5, "quantity": 1}
   ],
-  "address": "г. Москва, ул. Пушкина, д. 10, кв. 5"
+  "delivery": {
+    "address": "г. Москва, ул. Пушкина, д. 10, кв. 5",
+    "method": "courier"
+  }
+}
+```
+
+**Request (гость):**
+```json
+{
+  "customer": {
+    "first_name": "Иван",
+    "last_name": "Петров",
+    "email": "ivan@example.com",
+    "phone": "+79991234567"
+  },
+  "items": [
+    {"product_id": 1, "quantity": 2}
+  ],
+  "delivery": {
+    "address": "г. Москва, ул. Пушкина, д. 10, кв. 5",
+    "method": "courier"
+  }
 }
 ```
 
 **Правила валидации:**
-- `user_id` — обязательное, больше 0
 - `items` — минимум 1 элемент
 - `quantity` — больше 0
+- `delivery.address` — обязательное
+- Для гостя: `customer.first_name`, `customer.email`, `customer.phone` — обязательные
 - Товар должен существовать и иметь достаточный остаток
+- `delivery.cost` игнорируется сервером (всегда 0) — защита от подмены цены доставки
 
 **Response 201:**
 ```json
@@ -500,6 +669,7 @@ Authorization: Bearer <access_token>
   "status": "pending",
   "total": "105000",
   "address": "г. Москва, ул. Пушкина, д. 10, кв. 5",
+  "public_token": "a1b2c3...",
   "items": [
     {
       "id": 1,
@@ -513,10 +683,30 @@ Authorization: Bearer <access_token>
 }
 ```
 
+> `public_token` возвращается только для гостевых заказов (по нему доступны статус и оплата без авторизации). Для авторизованных заказов поле отсутствует.
+
 **Ошибки:**
-- `VALIDATION_ERROR` (400) — пустой заказ, `quantity <= 0`, `user_id` не указан
+- `VALIDATION_ERROR` (400) — пустой заказ, `quantity <= 0`, не указан адрес, не заполнены данные гостя
 - `NOT_FOUND` (404) — товар не найден
 - `VALIDATION_ERROR` (400) — недостаточный остаток
+
+### GET `/orders/public/{public_token}`
+Статус и детали гостевого заказа по публичному токену. Не требует авторизации.
+
+**Response 200:** (как POST `/orders`, включая `customer` и `delivery_method`/`delivery_cost`)
+
+**Ошибки:**
+- `NOT_FOUND` (404) — заказ не найден
+
+### POST `/orders/public/{public_token}/payment`
+Инициализация платежа для гостевого заказа. Не требует авторизации.
+
+**Response 201:** (как POST `/payments`)
+
+**Ошибки:**
+- `NOT_FOUND` (404) — заказ не найден
+- `CONFLICT` (409) — платёж уже существует
+- `VALIDATION_ERROR` (400) — заказ уже оплачен
 
 ### GET `/orders/me` 🔒
 Список заказов текущего пользователя (покупателя).
@@ -533,6 +723,7 @@ Authorization: Bearer <access_token>
       "total": "1500",
       "address": "г. Москва, ул. Пушкина, д. 10",
       "items_count": 3,
+      "tracking_number": "RU123456789",
       "created_at": "2026-07-19T10:00:00Z"
     }
   ],
@@ -541,6 +732,8 @@ Authorization: Bearer <access_token>
   "limit": 20
 }
 ```
+
+> `tracking_number` присутствует только если задан.
 
 ### GET `/orders/me/{id}` 🔒
 Детали заказа. Доступен покупателю (владельцу) и продавцам, чьи товары в заказе.
@@ -568,6 +761,12 @@ Authorization: Bearer <access_token>
         "id": 10,
         "username": "ivan"
       },
+      "customer": {
+        "first_name": "Иван",
+        "last_name": "Петров",
+        "email": "ivan@example.com",
+        "phone": "+79991234567"
+      },
       "items": [
         {
           "id": 1,
@@ -585,6 +784,8 @@ Authorization: Bearer <access_token>
   "limit": 20
 }
 ```
+
+> `customer` присутствует только для гостевых заказов. `buyer` — для авторизованных.
 
 ### PATCH `/orders/{id}/status` 🔒 `[seller]`
 Обновление статуса заказа. Доступна продавцу (для товаров в заказе) и покупателю (владельцу заказа).
@@ -613,6 +814,26 @@ Authorization: Bearer <access_token>
 - `VALIDATION_ERROR` (400) — невалидный статус или недопустимый переход
 - `FORBIDDEN` (403) — не продавец и не покупатель
 - `NOT_FOUND` (404) — заказ не найден
+
+### PATCH `/orders/{id}/tracking` 🔒 `[seller]`
+Установка трек-номера доставки. Доступна продавцу (для товаров в заказе) и админу.
+
+**Request:**
+```json
+{
+  "tracking_number": "RU123456789"
+}
+```
+
+**Response 200:** (как GET `/orders/me/{id}`)
+
+**Ошибки:**
+- `FORBIDDEN` (403) — не продавец товаров в заказе
+- `NOT_FOUND` (404) — заказ не найден
+
+### Автоматическая отмена просроченных заказов
+
+Неоплаченные заказы в статусе `pending` автоматически отменяются через **24 часа** после создания (`expires_at`). Фоновый процесс `OrderExpirer` (тикер 5 минут) находит просроченные заказы и переводит их в `cancelled`, возвращая остатки товаров на склад в одной транзакции.
 
 ---
 
