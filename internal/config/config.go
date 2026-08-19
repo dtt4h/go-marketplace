@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -19,6 +20,12 @@ type Config struct {
 	Redis    RedisConfig
 	S3       S3Config
 	SMTP     SMTPConfig
+	Telegram TelegramConfig
+}
+
+type TelegramConfig struct {
+	BotToken string
+	AdminIDs []int64
 }
 
 type ServerConfig struct {
@@ -137,6 +144,10 @@ func Load() (*Config, error) {
 			FromName:   getEnv("SMTP_FROM_NAME", "Go Marketplace"),
 			Encryption: getEnv("SMTP_ENCRYPTION", "starttls"),
 		},
+		Telegram: TelegramConfig{
+			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
+			AdminIDs: getEnvInt64Slice("TELEGRAM_ADMIN_IDS"),
+		},
 	}
 
 	return cfg, nil
@@ -165,4 +176,23 @@ func getEnvDuration(key string, fallback time.Duration) time.Duration {
 		}
 	}
 	return fallback
+}
+
+func getEnvInt64Slice(key string) []int64 {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return nil
+	}
+
+	var result []int64
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if n, err := strconv.ParseInt(part, 10, 64); err == nil {
+			result = append(result, n)
+		}
+	}
+	return result
 }
