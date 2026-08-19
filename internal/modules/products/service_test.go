@@ -22,12 +22,14 @@ type mockProductRepository struct {
 	updateProduct             func(ctx context.Context, id int64, title, description *string, price *string, stock *int32) (db.Product, error)
 	deleteProduct             func(ctx context.Context, id int64) error
 	moderateProduct           func(ctx context.Context, id int64, status db.ProductStatus) error
+	moderateProductWithReason func(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error
 	listProductImages         func(ctx context.Context, productID int64) ([]db.ProductImage, error)
 	listProductImagesByProductIDs func(ctx context.Context, productIDs []int64) ([]db.ProductImage, error)
 	getProductStoreOwner      func(ctx context.Context, productID int64) (db.GetProductStoreOwnerRow, error)
 	getImageByID              func(ctx context.Context, id int64) (db.ProductImage, error)
 	deleteImageByID           func(ctx context.Context, id int64) error
 	createProductImage        func(ctx context.Context, productID int64, url string, position int32) (db.ProductImage, error)
+	listProductsByStatus      func(ctx context.Context, status db.ProductStatus, page, limit int) ([]db.ListProductsByStatusRow, int64, error)
 }
 
 func (m *mockProductRepository) ListCategories(ctx context.Context) ([]db.ListCategoriesRow, error) {
@@ -54,6 +56,9 @@ func (m *mockProductRepository) DeleteProduct(ctx context.Context, id int64) err
 func (m *mockProductRepository) ModerateProduct(ctx context.Context, id int64, status db.ProductStatus) error {
 	return m.moderateProduct(ctx, id, status)
 }
+func (m *mockProductRepository) ModerateProductWithReason(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error {
+	return m.moderateProductWithReason(ctx, id, status, reason)
+}
 func (m *mockProductRepository) ListProductImages(ctx context.Context, productID int64) ([]db.ProductImage, error) {
 	return m.listProductImages(ctx, productID)
 }
@@ -71,6 +76,9 @@ func (m *mockProductRepository) DeleteImageByID(ctx context.Context, id int64) e
 }
 func (m *mockProductRepository) CreateProductImage(ctx context.Context, productID int64, url string, position int32) (db.ProductImage, error) {
 	return m.createProductImage(ctx, productID, url, position)
+}
+func (m *mockProductRepository) ListProductsByStatus(ctx context.Context, status db.ProductStatus, page, limit int) ([]db.ListProductsByStatusRow, int64, error) {
+	return m.listProductsByStatus(ctx, status, page, limit)
 }
 
 type mockStoreResolver struct {
@@ -759,7 +767,7 @@ func TestModerateProduct(t *testing.T) {
 	t.Run("active status", func(t *testing.T) {
 		productRow := testProductRow()
 		repo := &mockProductRepository{
-			moderateProduct: func(ctx context.Context, id int64, status db.ProductStatus) error {
+			moderateProductWithReason: func(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error {
 				return nil
 			},
 			getProduct: func(ctx context.Context, id int64) (db.GetProductRow, error) {
@@ -783,7 +791,7 @@ func TestModerateProduct(t *testing.T) {
 		productRow := testProductRow()
 		productRow.Status = db.ProductStatusRejected
 		repo := &mockProductRepository{
-			moderateProduct: func(ctx context.Context, id int64, status db.ProductStatus) error {
+			moderateProductWithReason: func(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error {
 				return nil
 			},
 			getProduct: func(ctx context.Context, id int64) (db.GetProductRow, error) {
@@ -804,7 +812,7 @@ func TestModerateProduct(t *testing.T) {
 		productRow := testProductRow()
 		productRow.Status = db.ProductStatusArchived
 		repo := &mockProductRepository{
-			moderateProduct: func(ctx context.Context, id int64, status db.ProductStatus) error {
+			moderateProductWithReason: func(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error {
 				return nil
 			},
 			getProduct: func(ctx context.Context, id int64) (db.GetProductRow, error) {
@@ -823,7 +831,7 @@ func TestModerateProduct(t *testing.T) {
 
 	t.Run("moderate fails", func(t *testing.T) {
 		repo := &mockProductRepository{
-			moderateProduct: func(ctx context.Context, id int64, status db.ProductStatus) error {
+			moderateProductWithReason: func(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error {
 				return errors.New("moderate error")
 			},
 		}

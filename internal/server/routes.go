@@ -69,8 +69,8 @@ func (s *Server) registerUserRoutes(r chi.Router) {
 	userHandler := users.NewUserHandler(userSvc)
 
 	r.With(mw.JWTAuth(s.cfg)).Get("/users/me", userHandler.GetProfile)
+	r.With(mw.JWTAuth(s.cfg)).Get("/users/me/store", userHandler.GetStore)
 	r.With(mw.JWTAuth(s.cfg)).Patch("/users/me", userHandler.UpdateProfile)
-	r.With(mw.JWTAuth(s.cfg)).Post("/users/me/store", userHandler.CreateStore)
 	r.With(mw.JWTAuth(s.cfg)).Patch("/users/me/store", userHandler.UpdateStore)
 }
 
@@ -96,6 +96,9 @@ func (s *Server) registerProductRoutes(r chi.Router) {
 
 	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
 		Patch("/products/{id}/moderate", productHandler.ModerateProduct)
+
+	r.With(mw.JWTAuth(s.cfg), mw.RoleGuard(string(db.UserRoleAdmin))).
+		Get("/admin/products", productHandler.ListProductsByStatus)
 
 	if s.store != nil {
 		imageSvc := products.NewImageUploadService(productRepo, s.store)

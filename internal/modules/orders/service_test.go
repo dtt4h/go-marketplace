@@ -12,7 +12,7 @@ import (
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pashagolub/pgxmock/v3"
 )
 
 // --- Mocks ---
@@ -134,7 +134,7 @@ func (m *mockNotificationSender) SendSellerNewOrder(sellerEmail, sellerName, ord
 	return nil
 }
 
-func newTestService(repo OrderRepository, solver storeResolver, paymentRef paymentRefunder, notifications notificationSender, pool *pgxpool.Pool) OrderService {
+func newTestService(repo OrderRepository, solver storeResolver, paymentRef paymentRefunder, notifications notificationSender, pool db.DBPool) OrderService {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	return NewOrderService(repo, solver, paymentRef, notifications, pool, logger)
 }
@@ -593,8 +593,16 @@ func TestUpdateOrderStatus(t *testing.T) {
 			getOrderItems: func(ctx context.Context, orderID int64) ([]db.GetOrderItemsRow, error) {
 				return testOrderItems(), nil
 			},
+			getProductStoreID: func(ctx context.Context, productID int64) (int64, error) {
+				return 10, nil
+			},
 		}
-		svc := newTestService(repo, nil, nil, nil, nil)
+		solver := &mockStoreResolver{
+			getStoreOwnerByStoreID: func(ctx context.Context, storeID int64) (int64, error) {
+				return 999, nil
+			},
+		}
+		svc := newTestService(repo, solver, nil, nil, nil)
 		_, err := svc.UpdateOrderStatus(ctx, 1, 1, dtos.UpdateOrderStatusRequest{Status: db.OrderStatusCancelled})
 		if err != ErrInvalidStatusTrans {
 			t.Fatalf("expected ErrInvalidStatusTrans, got %v", err)
@@ -604,6 +612,7 @@ func TestUpdateOrderStatus(t *testing.T) {
 	t.Run("success - seller shipping", func(t *testing.T) {
 		order := testOrder()
 		order.Status = db.OrderStatusPaid
+		order.UserID = pgtype.Int8{Valid: false}
 		repo := &mockOrderRepository{
 			getOrder: func(ctx context.Context, orderID int64) (db.Order, error) {
 				return order, nil
@@ -666,7 +675,23 @@ func TestUpdateOrderStatus(t *testing.T) {
 				return 1, nil
 			},
 		}
-		svc := newTestService(repo, solver, nil, nil, nil)
+		pool, err := pgxmock.NewPool()
+		if err != nil {
+			t.Fatalf("failed to create mock pool: %v", err)
+		}
+		pool.ExpectBegin()
+		pool.ExpectQuery("SELECT product_id, quantity FROM order_items WHERE order_id").
+			WithArgs(int64(1)).
+			WillReturnRows(pgxmock.NewRows([]string{"product_id", "quantity"}).AddRow(int64(1), int32(2)))
+		pool.ExpectQuery("UPDATE products SET stock = stock \\+ \\$2").
+			WithArgs(int64(1), int32(2)).
+			WillReturnRows(pgxmock.NewRows([]string{"id", "store_id", "title", "price", "stock"}).AddRow(int64(1), int64(10), "Test", "100.00", int32(100)))
+		pool.ExpectQuery("UPDATE orders SET status").
+			WithArgs(int64(1), db.OrderStatus("cancelled")).
+			WillReturnRows(pgxmock.NewRows([]string{"id", "user_id", "status", "total", "address", "created_at", "updated_at", "public_token", "customer_first_name", "customer_last_name", "customer_email", "customer_phone", "delivery_method", "delivery_cost", "tracking_number", "expires_at"}).
+				AddRow(int64(1), int64(1), "cancelled", "100.00", "123 Main St", pgtype.Timestamptz{}, pgtype.Timestamptz{}, nil, nil, nil, nil, nil, nil, "0", nil, nil))
+		pool.ExpectCommit()
+		svc := newTestService(repo, solver, nil, nil, pool)
 		resp, err := svc.UpdateOrderStatus(ctx, 1, 1, dtos.UpdateOrderStatusRequest{Status: db.OrderStatusCancelled})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -785,8 +810,8 @@ func TestMulNumeric(t *testing.T) {
 			t.Fatal("expected valid result")
 		}
 		str := dtos.NumericToStr(result)
-		if str != "31.50" {
-			t.Fatalf("expected 31.50, got %s", str)
+		if str != "31.5" {
+			t.Fatalf("expected 31.5, got %s", str)
 		}
 	})
 }
@@ -821,8 +846,8 @@ func TestAddNumeric(t *testing.T) {
 			t.Fatal("expected valid result")
 		}
 		str := dtos.NumericToStr(result)
-		if str != "15.50" {
-			t.Fatalf("expected 15.50, got %s", str)
+		if str != "15.5" {
+			t.Fatalf("expected 15.5, got %s", str)
 		}
 	})
 
@@ -837,8 +862,8 @@ func TestAddNumeric(t *testing.T) {
 			t.Fatal("expected valid result")
 		}
 		str := dtos.NumericToStr(result)
-		if str != "10.00" {
-			t.Fatalf("expected 10.00, got %s", str)
+		if str != "10" {
+			t.Fatalf("expected 10, got %s", str)
 		}
 	})
 }

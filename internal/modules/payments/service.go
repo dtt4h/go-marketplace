@@ -219,6 +219,7 @@ func (s *paymentService) HandleWebhook(ctx context.Context, req dtos.WebhookRequ
 
 		// Send receipt and status update to buyer
 		go func() {
+			ctx := context.Background()
 			order, orderErr := s.orders.GetOrder(ctx, req.OrderID)
 			if orderErr != nil {
 				s.log.Error("webhook: failed to get order for receipt", slog.Int64("order_id", req.OrderID), slog.String("error", orderErr.Error()))

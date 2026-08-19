@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ProductRepository defines data access methods for products.
+// ProductRepository defines data access methods for product operations.
 type ProductRepository interface {
 	ListCategories(ctx context.Context) ([]db.ListCategoriesRow, error)
 	ListProducts(ctx context.Context, storeID, categoryID *int64, minPrice, maxPrice *string, search *string, sort string, page, limit int) ([]db.ListProductsRow, int64, error)
@@ -21,12 +21,14 @@ type ProductRepository interface {
 	UpdateProduct(ctx context.Context, id int64, title, description *string, price *string, stock *int32) (db.Product, error)
 	DeleteProduct(ctx context.Context, id int64) error
 	ModerateProduct(ctx context.Context, id int64, status db.ProductStatus) error
+	ModerateProductWithReason(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error
 	ListProductImages(ctx context.Context, productID int64) ([]db.ProductImage, error)
 	ListProductImagesByProductIDs(ctx context.Context, productIDs []int64) ([]db.ProductImage, error)
-	GetProductStoreOwner(ctx context.Context, productID int64) (db.GetProductStoreOwnerRow, error)
-	GetImageByID(ctx context.Context, id int64) (db.ProductImage, error)
-	DeleteImageByID(ctx context.Context, id int64) error
 	CreateProductImage(ctx context.Context, productID int64, url string, position int32) (db.ProductImage, error)
+	DeleteImageByID(ctx context.Context, id int64) error
+	GetImageByID(ctx context.Context, id int64) (db.ProductImage, error)
+	GetProductStoreOwner(ctx context.Context, productID int64) (db.GetProductStoreOwnerRow, error)
+	ListProductsByStatus(ctx context.Context, status db.ProductStatus, page, limit int) ([]db.ListProductsByStatusRow, int64, error)
 }
 
 type productRepository struct {
@@ -178,6 +180,15 @@ func (r *productRepository) ModerateProduct(ctx context.Context, id int64, statu
 	return err
 }
 
+func (r *productRepository) ModerateProductWithReason(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error {
+	_, err := r.queries.ModerateProduct(ctx, db.ModerateProductParams{
+		ID:              id,
+		Status:          status,
+		RejectionReason: reason,
+	})
+	return err
+}
+
 func (r *productRepository) ListProductImages(ctx context.Context, productID int64) ([]db.ProductImage, error) {
 	return r.queries.ListProductImages(ctx, productID)
 }
@@ -225,6 +236,26 @@ func (r *productRepository) ListProductsByStoreID(ctx context.Context, storeID i
 	count, err := r.queries.ListProductsByStoreIDCount(ctx, storeID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list products by store count: %w", err)
+	}
+
+	return products, count, nil
+}
+
+func (r *productRepository) ListProductsByStatus(ctx context.Context, status db.ProductStatus, page, limit int) ([]db.ListProductsByStatusRow, int64, error) {
+	offset := int32((page - 1) * limit)
+
+	products, err := r.queries.ListProductsByStatus(ctx, db.ListProductsByStatusParams{
+		Status: status,
+		Limit:  int32(limit),
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list products by status: %w", err)
+	}
+
+	count, err := r.queries.ListProductsByStatusCount(ctx, status)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list products by status count: %w", err)
 	}
 
 	return products, count, nil

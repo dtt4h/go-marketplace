@@ -92,46 +92,34 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
-// CreateStore godoc
-// @Summary      Register as seller (create store)
-// @Description  Creates a store and upgrades user role to seller
+// GetStore godoc
+// @Summary      Get current user's store
 // @Tags         users
 // @Security     BearerAuth
-// @Accept       json
 // @Produce      json
-// @Param        request  body      dtos.CreateStoreRequest  true  "Store data"
-// @Success      201  {object}  dtos.StoreResponse
-// @Failure      400  {object}  httputil.ErrorResponse
+// @Success      200  {object}  dtos.StoreResponse
 // @Failure      401  {object}  httputil.ErrorResponse
-// @Failure      409  {object}  httputil.ErrorResponse
-// @Router       /users/me/store [post]
-func (h *UserHandler) CreateStore(w http.ResponseWriter, r *http.Request) {
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /users/me/store [get]
+func (h *UserHandler) GetStore(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
 		httputil.Unauthorized(w, "not authenticated")
 		return
 	}
 
-	var req dtos.CreateStoreRequest
-	if err := httputil.DecodeJSON(r, &req); err != nil {
-		httputil.ValidationError(w, "invalid request body", nil)
-		return
-	}
-
-	resp, err := h.service.CreateStore(r.Context(), userID, req)
+	resp, err := h.service.GetStore(r.Context(), userID)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrStoreAlreadyExists):
-			httputil.Conflict(w, err.Error())
-		case errors.Is(err, ErrStoreNameRequired):
-			httputil.ValidationError(w, err.Error(), nil)
+		case errors.Is(err, ErrStoreNotFound):
+			httputil.NotFound(w, err.Error())
 		default:
 			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
 
-	httputil.JSON(w, http.StatusCreated, resp)
+	httputil.JSON(w, http.StatusOK, resp)
 }
 
 // UpdateStore godoc

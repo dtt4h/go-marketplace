@@ -328,6 +328,48 @@ func (h *ProductHandler) ListProductsByStore(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// ListProductsByStatus godoc
+// @Summary      List products by moderation status (admin only)
+// @Description  Returns paginated list of products filtered by status (admin only)
+// @Tags         admin
+// @Security     BearerAuth
+// @Produce      json
+// @Param        status  query  string  true  "Product status: pending, active, rejected, archived"
+// @Param        page    query  int     false  "Page number (default 1)"
+// @Param        limit   query  int     false  "Items per page (default 20, max 100)"
+// @Success      200  {object}  httputil.PaginatedResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Router       /admin/products [get]
+func (h *ProductHandler) ListProductsByStatus(w http.ResponseWriter, r *http.Request) {
+	status := r.URL.Query().Get("status")
+	if status == "" {
+		httputil.ValidationError(w, "status query parameter is required", nil)
+		return
+	}
+
+	page, limit := httputil.ParsePagination(r)
+
+	items, total, err := h.service.ListProductsByStatus(r.Context(), status, page, limit)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidStatus):
+			httputil.ValidationError(w, err.Error(), nil)
+		default:
+			httputil.InternalError(w, r, err.Error())
+		}
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, httputil.PaginatedResponse{
+		Items: items,
+		Total: int(total),
+		Page:  page,
+		Limit: limit,
+	})
+}
+
 func parseOptionalInt64(s string) *int64 {
 	if s == "" {
 		return nil

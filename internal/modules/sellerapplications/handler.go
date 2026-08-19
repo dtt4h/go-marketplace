@@ -155,7 +155,7 @@ func (h *SellerApplicationHandler) UpdateStatus(w http.ResponseWriter, r *http.R
 	case "approved":
 		app, err = h.service.Approve(r.Context(), id)
 	case "rejected":
-		app, err = h.service.Reject(r.Context(), id)
+		app, err = h.service.Reject(r.Context(), id, req.Reason)
 	default:
 		httputil.ValidationError(w, ErrInvalidStatus.Error(), nil)
 		return

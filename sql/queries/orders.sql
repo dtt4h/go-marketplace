@@ -2,9 +2,10 @@
 INSERT INTO orders (
     user_id, status, total, address,
     public_token, customer_first_name, customer_last_name,
-    customer_email, customer_phone, delivery_method, delivery_cost
+    customer_email, customer_phone, delivery_method, delivery_cost,
+    expires_at
 )
-VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10, now() + INTERVAL '24 hours')
 RETURNING *;
 
 -- name: CreateOrderItem :one
@@ -84,6 +85,13 @@ RETURNING id, store_id, title, price, stock;
 
 -- name: GetOrderItemsByOrderID :many
 SELECT product_id, quantity FROM order_items WHERE order_id = $1;
+
+-- name: ExpirePendingOrders :many
+UPDATE orders
+SET status = 'cancelled'
+WHERE status = 'pending'
+  AND expires_at < now()
+RETURNING id;
 
 -- Admin queries
 

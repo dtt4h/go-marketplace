@@ -45,7 +45,7 @@ type SellerApplicationService interface {
 	ListMine(ctx context.Context, userID int64) ([]db.SellerApplication, error)
 	ListPending(ctx context.Context, page, limit int) ([]db.SellerApplication, int64, error)
 	Approve(ctx context.Context, applicationID int64) (db.SellerApplication, error)
-	Reject(ctx context.Context, applicationID int64) (db.SellerApplication, error)
+	Reject(ctx context.Context, applicationID int64, reason string) (db.SellerApplication, error)
 }
 
 type sellerApplicationService struct {
@@ -84,6 +84,7 @@ func (s *sellerApplicationService) Create(ctx context.Context, userID int64, sto
 
 	// Send notification to admin about new application
 	go func() {
+		ctx := context.Background()
 		user, userErr := s.userRepo.GetUserByID(ctx, userID)
 		if userErr != nil {
 			return
@@ -129,22 +130,30 @@ func (s *sellerApplicationService) Approve(ctx context.Context, applicationID in
 		return db.SellerApplication{}, fmt.Errorf("approve application: %w", err)
 	}
 
-	// Promote user to seller role
-	user, userErr := s.userRepo.GetUserByID(ctx, app.UserID)
-	if userErr == nil {
-		go func() {
-			_ = s.email.SendSellerApplicationApproved(user.Email, user.Username, app.StoreName)
-		}()
+	// Create store and promote user to seller role in a single transaction
+	storeName := app.StoreName
+	descStr := ""
+	if app.Description.Valid {
+		descStr = app.Description.String
+	}
+	_, err = s.userRepo.CreateStoreWithRole(ctx, app.UserID, storeName, &descStr, nil)
+	if err != nil {
+		return db.SellerApplication{}, fmt.Errorf("create store with role: %w", err)
 	}
 
-	if _, err := s.userRepo.UpdateUserRole(ctx, app.UserID, db.UserRoleSeller); err != nil {
-		return db.SellerApplication{}, fmt.Errorf("promote user to seller: %w", err)
-	}
+	// Send approval notification to user
+	go func() {
+		ctx := context.Background()
+		user, userErr := s.userRepo.GetUserByID(ctx, app.UserID)
+		if userErr == nil {
+			_ = s.email.SendSellerApplicationApproved(user.Email, user.Username, app.StoreName)
+		}
+	}()
 
 	return app, nil
 }
 
-func (s *sellerApplicationService) Reject(ctx context.Context, applicationID int64) (db.SellerApplication, error) {
+func (s *sellerApplicationService) Reject(ctx context.Context, applicationID int64, reason string) (db.SellerApplication, error) {
 	app, err := s.repo.GetByID(ctx, applicationID)
 	if err != nil {
 		return db.SellerApplication{}, ErrNotFound
@@ -158,13 +167,18 @@ func (s *sellerApplicationService) Reject(ctx context.Context, applicationID int
 		return db.SellerApplication{}, fmt.Errorf("reject application: %w", err)
 	}
 
-	// Send rejection notification to user
+	// Send rejection notification to user with reason
 	go func() {
+		ctx := context.Background()
 		user, userErr := s.userRepo.GetUserByID(ctx, app.UserID)
 		if userErr != nil {
 			return
 		}
-		_ = s.email.SendSellerApplicationRejected(user.Email, user.Username, "Ваша заявка была отклонена.")
+		rejectionReason := reason
+		if rejectionReason == "" {
+			rejectionReason = "Ваша заявка была отклонена."
+		}
+		_ = s.email.SendSellerApplicationRejected(user.Email, user.Username, rejectionReason)
 	}()
 
 	return app, nil

@@ -11,7 +11,6 @@ import (
 )
 
 var (
-	ErrStoreAlreadyExists = errors.New("store already exists")
 	ErrStoreNotFound      = errors.New("store not found")
 	ErrUserNotFound       = errors.New("user not found")
 	ErrUsernameTaken      = errors.New("username is already taken")
@@ -23,7 +22,7 @@ var (
 type UserService interface {
 	GetProfile(ctx context.Context, userID int64) (dtos.ProfileResponse, error)
 	UpdateProfile(ctx context.Context, userID int64, req dtos.UpdateProfileRequest) (dtos.ProfileResponse, error)
-	CreateStore(ctx context.Context, userID int64, req dtos.CreateStoreRequest) (dtos.StoreResponse, error)
+	GetStore(ctx context.Context, userID int64) (dtos.StoreResponse, error)
 	UpdateStore(ctx context.Context, userID int64, req dtos.UpdateStoreRequest) (dtos.StoreResponse, error)
 }
 
@@ -84,22 +83,13 @@ func (s *userService) UpdateProfile(ctx context.Context, userID int64, req dtos.
 	return dtos.ToProfileResponse(user), nil
 }
 
-func (s *userService) CreateStore(ctx context.Context, userID int64, req dtos.CreateStoreRequest) (dtos.StoreResponse, error) {
-	if err := validateStoreName(req.Name); err != nil {
-		return dtos.StoreResponse{}, err
-	}
-
-	_, err := s.repo.GetStoreByUserID(ctx, userID)
-	if err == nil {
-		return dtos.StoreResponse{}, ErrStoreAlreadyExists
-	}
-	if !pgutil.IsNoRows(err) {
-		return dtos.StoreResponse{}, fmt.Errorf("get store by user id: %w", err)
-	}
-
-	store, err := s.repo.CreateStoreWithRole(ctx, userID, req.Name, req.Description, req.LogoURL)
+func (s *userService) GetStore(ctx context.Context, userID int64) (dtos.StoreResponse, error) {
+	store, err := s.repo.GetStoreByUserID(ctx, userID)
 	if err != nil {
-		return dtos.StoreResponse{}, fmt.Errorf("create store with role: %w", err)
+		if pgutil.IsNoRows(err) {
+			return dtos.StoreResponse{}, ErrStoreNotFound
+		}
+		return dtos.StoreResponse{}, fmt.Errorf("get store by user id: %w", err)
 	}
 
 	return dtos.ToStoreResponse(store), nil

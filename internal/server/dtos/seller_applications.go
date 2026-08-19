@@ -13,6 +13,7 @@ type CreateSellerApplicationRequest struct {
 
 type UpdateApplicationStatusRequest struct {
 	Status string `json:"status"` // approved | rejected
+	Reason string `json:"reason,omitempty"`
 }
 
 type SellerApplicationResponse struct {

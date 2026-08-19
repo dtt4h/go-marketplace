@@ -26,7 +26,9 @@ import (
 
 	"github.com/dtt4h/go-marketplace/internal/config"
 	"github.com/dtt4h/go-marketplace/internal/database"
+	sqlcdb "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/logger"
+	"github.com/dtt4h/go-marketplace/internal/modules/orders"
 	"github.com/dtt4h/go-marketplace/internal/server"
 	"github.com/dtt4h/go-marketplace/internal/storage"
 )
@@ -75,6 +77,10 @@ func main() {
 		}
 	}()
 
+	// Periodically expire unpaid pending orders and restore their stock.
+	expirer := orders.NewOrderExpirer(sqlcdb.New(db), db, log)
+	go runOrderExpirer(expirer, log, ctx)
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -103,4 +109,20 @@ func runMigrations(dsn string) error {
 		return err
 	}
 	return nil
+}
+
+func runOrderExpirer(expirer *orders.OrderExpirer, log *slog.Logger, ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := expirer.ExpirePendingOrders(context.Background()); err != nil {
+				log.Error("order expiration failed", slog.String("error", err.Error()))
+			}
+		}
+	}
 }

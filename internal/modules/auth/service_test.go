@@ -9,6 +9,7 @@ import (
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/config"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -76,7 +77,7 @@ func testUser() db.User {
 	return db.User{
 		ID:           1,
 		Email:        "test@example.com",
-		PasswordHash: "$2a$12$hashed",
+		PasswordHash: "$2a$12$.aZXa72zxUv67HNct3HAR.hvhpR5x5/mTEq42g6A2Y5kFZtjXEoUC",
 		Role:         db.UserRoleBuyer,
 		Username:     "testuser",
 	}
@@ -179,7 +180,7 @@ func TestLogin(t *testing.T) {
 	t.Run("rejects invalid credentials - user not found", func(t *testing.T) {
 		repo := &mockAuthRepository{
 			getUserByEmail: func(ctx context.Context, email string) (db.User, error) {
-				return db.User{}, errors.New("not found")
+				return db.User{}, pgx.ErrNoRows
 			},
 		}
 		svc := newTestService(repo)
@@ -245,7 +246,7 @@ func TestRefresh(t *testing.T) {
 	t.Run("rejects invalid refresh token", func(t *testing.T) {
 		repo := &mockAuthRepository{
 			getRefresh: func(ctx context.Context, token string) (db.RefreshToken, error) {
-				return db.RefreshToken{}, errors.New("not found")
+				return db.RefreshToken{}, pgx.ErrNoRows
 			},
 		}
 		svc := newTestService(repo)
@@ -280,7 +281,11 @@ func TestRefresh(t *testing.T) {
 		user := testUser()
 		repo := &mockAuthRepository{
 			getRefresh: func(ctx context.Context, token string) (db.RefreshToken, error) {
-				return db.RefreshToken{ID: 1, UserID: 1}, nil
+				return db.RefreshToken{
+					ID:        1,
+					UserID:    1,
+					ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+				}, nil
 			},
 			getUserByID: func(ctx context.Context, id int64) (db.User, error) {
 				return user, nil

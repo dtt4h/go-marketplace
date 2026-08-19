@@ -152,6 +152,7 @@ type GetProductRow struct {
 	Price            pgtype.Numeric     `json:"price"`
 	Stock            int32              `json:"stock"`
 	Status           ProductStatus      `json:"status"`
+	RejectionReason  pgtype.Text        `json:"rejectionReason"`
 	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
 	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
 	StoreName        pgtype.Text        `json:"storeName"`
@@ -172,6 +173,7 @@ func (q *Queries) GetProduct(ctx context.Context, id int64) (GetProductRow, erro
 		&i.Price,
 		&i.Stock,
 		&i.Status,
+		&i.RejectionReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StoreName,
@@ -528,17 +530,105 @@ func (q *Queries) ListProductsCount(ctx context.Context, arg ListProductsCountPa
 const moderateProduct = `-- name: ModerateProduct :execresult
 UPDATE products
 SET status = $2,
+    rejection_reason = CASE WHEN $2 = 'rejected' THEN COALESCE($3, '') ELSE NULL END,
     updated_at = now()
 WHERE id = $1
 `
 
 type ModerateProductParams struct {
-	ID     int64         `json:"id"`
-	Status ProductStatus `json:"status"`
+	ID            int64         `json:"id"`
+	Status        ProductStatus `json:"status"`
+	RejectionReason pgtype.Text  `json:"rejectionReason"`
 }
 
 func (q *Queries) ModerateProduct(ctx context.Context, arg ModerateProductParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, moderateProduct, arg.ID, arg.Status)
+	return q.db.Exec(ctx, moderateProduct, arg.ID, arg.Status, arg.RejectionReason)
+}
+
+const listProductsByStatus = `-- name: ListProductsByStatus :many
+SELECT p.id, p.store_id, p.category_id, p.title, p.description,
+       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       s.name AS store_name, s.description AS store_description,
+       c.name AS category_name, c.slug AS category_slug
+FROM products p
+LEFT JOIN stores s ON p.store_id = s.id
+LEFT JOIN categories c ON p.category_id = c.id
+WHERE p.status = $1
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListProductsByStatusParams struct {
+	Status ProductStatus `json:"status"`
+	Limit  int32         `json:"limit"`
+	Offset int32         `json:"offset"`
+}
+
+type ListProductsByStatusRow struct {
+	ID               int64              `json:"id"`
+	StoreID          int64              `json:"storeId"`
+	CategoryID       pgtype.Int8        `json:"categoryId"`
+	Title            string             `json:"title"`
+	Description      pgtype.Text        `json:"description"`
+	Price            pgtype.Numeric     `json:"price"`
+	Stock            int32              `json:"stock"`
+	Status           ProductStatus      `json:"status"`
+	RejectionReason  pgtype.Text        `json:"rejectionReason"`
+	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
+	StoreName        pgtype.Text        `json:"storeName"`
+	StoreDescription pgtype.Text        `json:"storeDescription"`
+	CategoryName     pgtype.Text        `json:"categoryName"`
+	CategorySlug     pgtype.Text        `json:"categorySlug"`
+}
+
+func (q *Queries) ListProductsByStatus(ctx context.Context, arg ListProductsByStatusParams) ([]ListProductsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, listProductsByStatus, arg.Status, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductsByStatusRow
+	for rows.Next() {
+		var i ListProductsByStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StoreID,
+			&i.CategoryID,
+			&i.Title,
+			&i.Description,
+			&i.Price,
+			&i.Stock,
+			&i.Status,
+			&i.RejectionReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.StoreName,
+			&i.StoreDescription,
+			&i.CategoryName,
+			&i.CategorySlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductsByStatusCount = `-- name: ListProductsByStatusCount :one
+SELECT COUNT(*)
+FROM products p
+WHERE p.status = $1
+`
+
+func (q *Queries) ListProductsByStatusCount(ctx context.Context, status ProductStatus) (int64, error) {
+	row := q.db.QueryRow(ctx, listProductsByStatusCount, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const updateProduct = `-- name: UpdateProduct :one

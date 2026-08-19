@@ -17,6 +17,11 @@ type DBTX interface {
 	QueryRow(context.Context, string, ...interface{}) pgx.Row
 }
 
+type DBPool interface {
+	DBTX
+	Begin(context.Context) (pgx.Tx, error)
+}
+
 func New(db DBTX) *Queries {
 	return &Queries{db: db}
 }

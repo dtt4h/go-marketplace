@@ -9,6 +9,7 @@ import (
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	"github.com/dtt4h/go-marketplace/pkg/pgutil"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
@@ -41,6 +42,7 @@ type ProductService interface {
 	UpdateProduct(ctx context.Context, userID, id int64, req dtos.UpdateProductRequest) (dtos.ProductResponse, error)
 	DeleteProduct(ctx context.Context, userID, id int64) error
 	ModerateProduct(ctx context.Context, id int64, req dtos.ModerateProductRequest) (dtos.ProductResponse, error)
+	ListProductsByStatus(ctx context.Context, status string, page, limit int) ([]dtos.ProductListItem, int64, error)
 }
 
 type productService struct {
@@ -241,11 +243,57 @@ func (s *productService) ModerateProduct(ctx context.Context, id int64, req dtos
 		return dtos.ProductResponse{}, ErrInvalidStatus
 	}
 
-	if err := s.repo.ModerateProduct(ctx, id, req.Status); err != nil {
+	var reason pgtype.Text
+	if req.Reason != nil && *req.Reason != "" {
+		reason = pgtype.Text{String: *req.Reason, Valid: true}
+	}
+
+	if err := s.repo.ModerateProductWithReason(ctx, id, req.Status, reason); err != nil {
 		return dtos.ProductResponse{}, fmt.Errorf("moderate product: %w", err)
 	}
 
 	return s.GetProduct(ctx, id)
+}
+
+func (s *productService) ListProductsByStatus(ctx context.Context, status string, page, limit int) ([]dtos.ProductListItem, int64, error) {
+	var productStatus db.ProductStatus
+	switch status {
+	case "pending", "active", "rejected", "archived":
+		productStatus = db.ProductStatus(status)
+	default:
+		return nil, 0, ErrInvalidStatus
+	}
+
+	rows, total, err := s.repo.ListProductsByStatus(ctx, productStatus, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list products by status: %w", err)
+	}
+
+	if len(rows) == 0 {
+		return []dtos.ProductListItem{}, 0, nil
+	}
+
+	productIDs := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		productIDs = append(productIDs, row.ID)
+	}
+
+	allImages, err := s.repo.ListProductImagesByProductIDs(ctx, productIDs)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list product images batch: %w", err)
+	}
+
+	imagesByProduct := make(map[int64][]db.ProductImage)
+	for _, img := range allImages {
+		imagesByProduct[img.ProductID] = append(imagesByProduct[img.ProductID], img)
+	}
+
+	items := make([]dtos.ProductListItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, dtos.ToProductListItemFromStatusRow(row, imagesByProduct[row.ID]))
+	}
+
+	return items, total, nil
 }
 
 func (s *productService) checkOwnership(ctx context.Context, userID, productID int64) error {

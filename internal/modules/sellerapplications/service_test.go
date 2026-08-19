@@ -405,8 +405,8 @@ func TestApprove(t *testing.T) {
 			getUserByID: func(ctx context.Context, id int64) (db.User, error) {
 				return user, nil
 			},
-			updateUserRole: func(ctx context.Context, id int64, role db.UserRole) (db.User, error) {
-				return db.User{}, errors.New("promote error")
+			createStoreWithRole: func(ctx context.Context, userID int64, name string, description, logoURL *string) (db.Store, error) {
+				return db.Store{}, errors.New("promote error")
 			},
 		}
 		svc := newTestService(repo, userRepo, &mockEmailSender{})
@@ -432,9 +432,9 @@ func TestApprove(t *testing.T) {
 			getUserByID: func(ctx context.Context, id int64) (db.User, error) {
 				return user, nil
 			},
-			updateUserRole: func(ctx context.Context, id int64, role db.UserRole) (db.User, error) {
+			createStoreWithRole: func(ctx context.Context, userID int64, name string, description, logoURL *string) (db.Store, error) {
 				user.Role = db.UserRoleSeller
-				return user, nil
+				return db.Store{ID: 1, UserID: userID, Name: name}, nil
 			},
 		}
 		email := &mockEmailSender{}
@@ -461,7 +461,7 @@ func TestReject(t *testing.T) {
 			},
 		}
 		svc := newTestService(repo, nil, &mockEmailSender{})
-		_, err := svc.Reject(ctx, 999)
+		_, err := svc.Reject(ctx, 999, "")
 		if err != ErrNotFound {
 			t.Fatalf("expected ErrNotFound, got %v", err)
 		}
@@ -476,7 +476,7 @@ func TestReject(t *testing.T) {
 			},
 		}
 		svc := newTestService(repo, nil, &mockEmailSender{})
-		_, err := svc.Reject(ctx, 1)
+		_, err := svc.Reject(ctx, 1, "")
 		if err != ErrAlreadyProcessed {
 			t.Fatalf("expected ErrAlreadyProcessed, got %v", err)
 		}
@@ -493,7 +493,7 @@ func TestReject(t *testing.T) {
 			},
 		}
 		svc := newTestService(repo, nil, &mockEmailSender{})
-		_, err := svc.Reject(ctx, 1)
+		_, err := svc.Reject(ctx, 1, "")
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -517,7 +517,7 @@ func TestReject(t *testing.T) {
 			},
 		}
 		svc := newTestService(repo, userRepo, &mockEmailSender{})
-		result, err := svc.Reject(ctx, 1)
+		result, err := svc.Reject(ctx, 1, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -543,7 +543,7 @@ func TestReject(t *testing.T) {
 			},
 		}
 		svc := newTestService(repo, userRepo, &mockEmailSender{})
-		result, err := svc.Reject(ctx, 1)
+		result, err := svc.Reject(ctx, 1, "Недостаточно информации")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

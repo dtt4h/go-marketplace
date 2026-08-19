@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
+	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 )
 
 // AdminStatsRepository provides statistics queries.
@@ -51,15 +52,9 @@ func (r *adminStatsRepository) CountTotalRevenue(ctx context.Context) (string, e
 		return "0", fmt.Errorf("sum order totals: %w", err)
 	}
 	
-	// Sum returns interface{} from COALESCE(SUM(...))
-	switch v := total.(type) {
-	case string:
-		return v, nil
-	case float64:
-		return fmt.Sprintf("%.2f", v), nil
-	case int64:
-		return fmt.Sprintf("%d", v), nil
-	default:
+	if !total.Valid {
 		return "0", nil
 	}
+	
+	return dtos.NumericToStr(total), nil
 }

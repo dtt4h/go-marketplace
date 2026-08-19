@@ -9,13 +9,11 @@ import (
 	"log/slog"
 	"math/big"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/modules/notifications"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
@@ -66,12 +64,12 @@ type orderService struct {
 	solver        storeResolver
 	paymentRef    paymentRefunder
 	notifications notificationSender
-	pool          *pgxpool.Pool
+	pool          db.DBPool
 	log           *slog.Logger
 }
 
 // NewOrderService creates a new OrderService.
-func NewOrderService(repo OrderRepository, solver storeResolver, paymentRef paymentRefunder, notifications notificationSender, pool *pgxpool.Pool, log *slog.Logger) OrderService {
+func NewOrderService(repo OrderRepository, solver storeResolver, paymentRef paymentRefunder, notifications notificationSender, pool db.DBPool, log *slog.Logger) OrderService {
 	return &orderService{repo: repo, solver: solver, paymentRef: paymentRef, notifications: notifications, pool: pool, log: log}
 }
 
@@ -174,10 +172,12 @@ func (s *orderService) CreateOrder(ctx context.Context, userID *int64, req dtos.
 		})
 	}
 
-	// Add delivery cost to total
-	deliveryCost, err := parseNumeric(req.Delivery.Cost)
-	if err != nil {
-		return dtos.OrderResponse{}, fmt.Errorf("parse delivery cost: %w", err)
+	// Delivery cost is always 0 by default.
+	// Server-side calculation should be added here when a real delivery provider is integrated.
+	// The cost sent by the client is intentionally ignored for security.
+	deliveryCost := pgtype.Numeric{}
+	if err := deliveryCost.Scan("0"); err != nil {
+		return dtos.OrderResponse{}, fmt.Errorf("init delivery cost: %w", err)
 	}
 	total, err = s.addNumeric(total, deliveryCost)
 	if err != nil {
@@ -228,6 +228,7 @@ func (s *orderService) CreateOrder(ctx context.Context, userID *int64, req dtos.
 
 	// Send notifications asynchronously (non-blocking)
 	go func() {
+		ctx := context.Background()
 		customerEmail := ""
 		customerName := "Покупатель"
 		if req.Customer != nil {
@@ -541,6 +542,7 @@ func (s *orderService) UpdateOrderStatus(ctx context.Context, userID int64, orde
 	// Send status update notification to buyer
 	if order.UserID.Valid {
 		go func() {
+			ctx := context.Background()
 			user, err := s.solver.GetUserByID(ctx, order.UserID.Int64)
 			if err != nil {
 				return

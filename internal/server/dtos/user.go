@@ -13,12 +13,6 @@ type UpdateProfileRequest struct {
 	AvatarURL *string `json:"avatar_url,omitempty"`
 }
 
-type CreateStoreRequest struct {
-	Name        string  `json:"name"`
-	Description *string `json:"description,omitempty"`
-	LogoURL     *string `json:"logo_url,omitempty"`
-}
-
 type UpdateStoreRequest struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`

@@ -51,17 +51,18 @@ type ProductImageResponse struct {
 }
 
 type ProductResponse struct {
-	ID          int64                  `json:"id"`
-	Title       string                 `json:"title"`
-	Description *string                `json:"description,omitempty"`
-	Price       string                 `json:"price"`
-	Stock       int                    `json:"stock"`
-	Status      string                 `json:"status"`
-	Images      []ProductImageResponse `json:"images,omitempty"`
-	Store       *ProductStoreInfo      `json:"store,omitempty"`
-	Category    *CategoryResponse      `json:"category,omitempty"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	ID              int64                  `json:"id"`
+	Title           string                 `json:"title"`
+	Description     *string                `json:"description,omitempty"`
+	Price           string                 `json:"price"`
+	Stock           int                    `json:"stock"`
+	Status          string                 `json:"status"`
+	RejectionReason *string                `json:"rejection_reason,omitempty"`
+	Images          []ProductImageResponse `json:"images,omitempty"`
+	Store           *ProductStoreInfo      `json:"store,omitempty"`
+	Category        *CategoryResponse      `json:"category,omitempty"`
+	CreatedAt       time.Time              `json:"created_at"`
+	UpdatedAt       time.Time              `json:"updated_at"`
 }
 
 type ProductListItem struct {
@@ -177,6 +178,10 @@ func ToProductResponse(row db.GetProductRow, images []db.ProductImage) ProductRe
 		UpdatedAt: row.UpdatedAt.Time,
 	}
 
+	if row.RejectionReason.Valid {
+		resp.RejectionReason = &row.RejectionReason.String
+	}
+
 	if row.Description.Valid {
 		resp.Description = &row.Description.String
 	}
@@ -268,6 +273,21 @@ func ToProductListItem(row db.ListProductsRow, images []db.ProductImage) Product
 }
 
 func ToProductListItemFromStoreRow(row db.ListProductsByStoreIDRow, images []db.ProductImage) ProductListItem {
+	return toProductListItem(productListFields{
+		ID:           row.ID,
+		Title:        row.Title,
+		Price:        row.Price,
+		Stock:        row.Stock,
+		CreatedAt:    row.CreatedAt,
+		StoreID:      row.StoreID,
+		StoreName:    row.StoreName,
+		CategoryID:   row.CategoryID,
+		CategoryName: row.CategoryName,
+		CategorySlug: row.CategorySlug,
+	}, images)
+}
+
+func ToProductListItemFromStatusRow(row db.ListProductsByStatusRow, images []db.ProductImage) ProductListItem {
 	return toProductListItem(productListFields{
 		ID:           row.ID,
 		Title:        row.Title,
