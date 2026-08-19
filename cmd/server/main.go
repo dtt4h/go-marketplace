@@ -24,11 +24,16 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
+	"github.com/dtt4h/go-marketplace/internal/bot"
 	"github.com/dtt4h/go-marketplace/internal/config"
 	"github.com/dtt4h/go-marketplace/internal/database"
 	sqlcdb "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/logger"
+	"github.com/dtt4h/go-marketplace/internal/modules/notifications"
 	"github.com/dtt4h/go-marketplace/internal/modules/orders"
+	"github.com/dtt4h/go-marketplace/internal/modules/products"
+	"github.com/dtt4h/go-marketplace/internal/modules/sellerapplications"
+	"github.com/dtt4h/go-marketplace/internal/modules/users"
 	"github.com/dtt4h/go-marketplace/internal/server"
 	"github.com/dtt4h/go-marketplace/internal/storage"
 )
@@ -70,16 +75,55 @@ func main() {
 
 	srv := server.New(cfg, log, db, store)
 
+	// Periodically expire unpaid pending orders and restore their stock.
+	expirer := orders.NewOrderExpirer(sqlcdb.New(db), db, log)
+	go runOrderExpirer(expirer, log, ctx)
+
+	// Start Telegram admin bot (optional, requires TELEGRAM_BOT_TOKEN).
+	if cfg.Telegram.BotToken != "" {
+		queries := sqlcdb.New(db)
+
+		statsRepo := orders.NewAdminStatsRepository(queries)
+		statsSvc := orders.NewAdminStatsService(statsRepo)
+
+		productRepo := products.NewProductRepository(queries, db)
+		storeResolver := users.NewUserRepository(queries, db)
+		productSvc := products.NewProductService(productRepo, storeResolver)
+
+		appRepo := sellerapplications.NewSellerApplicationRepository(queries)
+		userRepo := users.NewUserRepository(queries, db)
+		emailSvc := notifications.NewEmailService(cfg.SMTP, log)
+		receiptSvc := notifications.NewReceiptService()
+		notifSvc := notifications.NewNotificationService(emailSvc, receiptSvc, log)
+		appSvc := sellerapplications.NewSellerApplicationService(appRepo, userRepo, notifSvc)
+
+		adminOrderRepo := orders.NewAdminOrderRepository(queries)
+		adminOrderSvc := orders.NewAdminOrderService(adminOrderRepo, userRepo)
+
+		adminBot, err := bot.New(
+			cfg.Telegram.BotToken,
+			cfg.Telegram.AdminIDs,
+			statsSvc,
+			productSvc,
+			appSvc,
+			adminOrderSvc,
+			log,
+		)
+		if err != nil {
+			log.Error("failed to create telegram bot", slog.String("error", err.Error()))
+		} else {
+			go adminBot.Start(ctx)
+		}
+	} else {
+		log.Info("telegram bot token not set, admin bot disabled")
+	}
+
 	go func() {
 		if err := srv.Start(); err != nil && err != http.ErrServerClosed {
 			log.Error("server error", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
 	}()
-
-	// Periodically expire unpaid pending orders and restore their stock.
-	expirer := orders.NewOrderExpirer(sqlcdb.New(db), db, log)
-	go runOrderExpirer(expirer, log, ctx)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
