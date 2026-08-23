@@ -69,31 +69,6 @@ export function ProductDetails({
             </div>
           )}
         </div>
-        <section aria-labelledby="product-description-heading" className={cls.descContainer}>
-          <h2 id="product-description-heading" className={cls.descTitle}>
-            Описание
-          </h2>
-          <p className={cls.productDescription}>
-            {product.description ?? 'Описание отсутствует'}
-          </p>
-        </section>
-        <section
-          aria-labelledby="product-specifications-heading"
-          className={cls.specContainer}
-        >
-          <h2
-            id="product-specifications-heading"
-            className={cls.descTitle}
-          >
-            Характеристики
-          </h2>
-          <div className={cls.specRow}>
-            <p className={cls.catTitle}>Категория</p>
-            <p className={cls.prodTitle}>
-              {product.category?.name ?? 'Не указана'}
-            </p>
-          </div>
-        </section>
       </div>
 
       <div className={cls.rightSide}>
@@ -139,6 +114,37 @@ export function ProductDetails({
             </Button>
           </section>
         )}
+        <section
+          aria-labelledby="product-description-heading"
+          className={cls.descContainer}
+        >
+          <h2
+            id="product-description-heading"
+            className={cls.descTitle}
+          >
+            Описание
+          </h2>
+          <p className={cls.productDescription}>
+            {product.description ?? 'Описание отсутствует'}
+          </p>
+        </section>
+        <section
+          aria-labelledby="product-specifications-heading"
+          className={cls.specContainer}
+        >
+          <h2
+            id="product-specifications-heading"
+            className={cls.descTitle}
+          >
+            Характеристики
+          </h2>
+          <div className={cls.specRow}>
+            <p className={cls.catTitle}>Категория</p>
+            <p className={cls.prodTitle}>
+              {product.category?.name ?? 'Не указана'}
+            </p>
+          </div>
+        </section>
       </div>
     </article>
   )

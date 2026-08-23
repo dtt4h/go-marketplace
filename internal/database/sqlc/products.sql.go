@@ -134,7 +134,7 @@ func (q *Queries) GetImageByID(ctx context.Context, id int64) (ProductImage, err
 
 const getProduct = `-- name: GetProduct :one
 SELECT p.id, p.store_id, p.category_id, p.title, p.description,
-       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       p.price, p.stock, p.status, p.rejection_reason, p.created_at, p.updated_at,
        s.name AS store_name, s.description AS store_description,
        c.name AS category_name, c.slug AS category_slug
 FROM products p
@@ -529,8 +529,11 @@ func (q *Queries) ListProductsCount(ctx context.Context, arg ListProductsCountPa
 
 const moderateProduct = `-- name: ModerateProduct :execresult
 UPDATE products
-SET status = $2,
-    rejection_reason = CASE WHEN $2 = 'rejected' THEN COALESCE($3, '') ELSE NULL END,
+SET status = $2::product_status,
+    rejection_reason = CASE
+        WHEN $2::product_status = 'rejected'::product_status THEN COALESCE($3::text, '')
+        ELSE NULL
+    END,
     updated_at = now()
 WHERE id = $1
 `
@@ -547,7 +550,7 @@ func (q *Queries) ModerateProduct(ctx context.Context, arg ModerateProductParams
 
 const listProductsByStatus = `-- name: ListProductsByStatus :many
 SELECT p.id, p.store_id, p.category_id, p.title, p.description,
-       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       p.price, p.stock, p.status, p.rejection_reason, p.created_at, p.updated_at,
        s.name AS store_name, s.description AS store_description,
        c.name AS category_name, c.slug AS category_slug
 FROM products p
