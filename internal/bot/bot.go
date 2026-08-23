@@ -74,15 +74,30 @@ func (b *Bot) registerHandlers() {
 		}
 	})
 
+	// Commands
 	b.bot.Handle("/start", b.handleStart)
-	b.bot.Handle("/help", b.handleHelp)
-	b.bot.Handle("/stats", b.handleStats)
-	b.bot.Handle("/moderate", b.handleModerate)
-	b.bot.Handle("/applications", b.handleApplications)
-	b.bot.Handle("/orders", b.handleOrders)
+	b.bot.Handle("/help", b.handleStart)
 
+	// Main menu callbacks
+	b.bot.Handle(&telebot.InlineButton{Unique: "menu_stats"}, b.handleStats)
+	b.bot.Handle(&telebot.InlineButton{Unique: "menu_moderate"}, b.handleModerate)
+	b.bot.Handle(&telebot.InlineButton{Unique: "menu_applications"}, b.handleApplications)
+	b.bot.Handle(&telebot.InlineButton{Unique: "menu_orders"}, b.handleOrdersMenu)
+	b.bot.Handle(&telebot.InlineButton{Unique: "menu_back"}, b.handleBackToMenu)
+
+	// Order filter callbacks
+	b.bot.Handle(&telebot.InlineButton{Unique: "orders_all"}, b.handleOrdersAll)
+	b.bot.Handle(&telebot.InlineButton{Unique: "orders_pending"}, b.handleOrdersByStatus)
+	b.bot.Handle(&telebot.InlineButton{Unique: "orders_paid"}, b.handleOrdersByStatus)
+	b.bot.Handle(&telebot.InlineButton{Unique: "orders_shipped"}, b.handleOrdersByStatus)
+	b.bot.Handle(&telebot.InlineButton{Unique: "orders_delivered"}, b.handleOrdersByStatus)
+	b.bot.Handle(&telebot.InlineButton{Unique: "orders_cancelled"}, b.handleOrdersByStatus)
+
+	// Moderation callbacks
 	b.bot.Handle(&telebot.InlineButton{Unique: "mod_approve"}, b.callbackModerateApprove)
 	b.bot.Handle(&telebot.InlineButton{Unique: "mod_reject"}, b.callbackModerateReject)
+
+	// Application callbacks
 	b.bot.Handle(&telebot.InlineButton{Unique: "app_approve"}, b.callbackAppApprove)
 	b.bot.Handle(&telebot.InlineButton{Unique: "app_reject"}, b.callbackAppReject)
 }
