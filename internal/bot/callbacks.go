@@ -45,7 +45,7 @@ func (b *Bot) callbackModerateReject(c telebot.Context) error {
 		return c.Respond(&telebot.CallbackResponse{Text: "❌ Ошибка при отклонении", ShowAlert: true})
 	}
 
-	c.Edit(fmt.Sprintf("❌ *Товар #%d отклонён*", productID), telebot.ModeMarkdown)
+	c.Edit(fmt.Sprintf("❌ *Товар #%d отклонён*", productID), backKeyboard(), telebot.ModeMarkdown)
 	return c.Respond(&telebot.CallbackResponse{Text: "❌ Отклонено"})
 }
 
@@ -65,7 +65,7 @@ func (b *Bot) callbackAppApprove(c telebot.Context) error {
 		return c.Respond(&telebot.CallbackResponse{Text: errMsg, ShowAlert: true})
 	}
 
-	c.Edit(fmt.Sprintf("✅ *Заявка #%d одобрена*\n\n🏪 Магазин «%s» создан", appID, escapeMarkdown(app.StoreName)), telebot.ModeMarkdown)
+	c.Edit(fmt.Sprintf("✅ *Заявка #%d одобрена*\n\n🏪 Магазин «%s» создан", appID, escapeMarkdown(app.StoreName)), backKeyboard(), telebot.ModeMarkdown)
 	return c.Respond(&telebot.CallbackResponse{Text: "✅ Одобрено"})
 }
 
@@ -85,6 +85,6 @@ func (b *Bot) callbackAppReject(c telebot.Context) error {
 		return c.Respond(&telebot.CallbackResponse{Text: errMsg, ShowAlert: true})
 	}
 
-	c.Edit(fmt.Sprintf("❌ *Заявка #%d отклонена*", appID), telebot.ModeMarkdown)
+	c.Edit(fmt.Sprintf("❌ *Заявка #%d отклонена*", appID), backKeyboard(), telebot.ModeMarkdown)
 	return c.Respond(&telebot.CallbackResponse{Text: "❌ Отклонено"})
 }

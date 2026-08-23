@@ -12,6 +12,8 @@ import (
 	telebot "gopkg.in/telebot.v3"
 )
 
+const pageLimit = 5
+
 type Bot struct {
 	bot        *telebot.Bot
 	log        *slog.Logger
@@ -78,12 +80,21 @@ func (b *Bot) registerHandlers() {
 	b.bot.Handle("/start", b.handleStart)
 	b.bot.Handle("/help", b.handleStart)
 
-	// Main menu callbacks
+	// Reply keyboard buttons (persistent keyboard above input field)
+	b.bot.Handle("\xf0\x9f\x93\x8a Статистика", b.handleStats)
+	b.bot.Handle("\xf0\x9f\x93\xa6 Модерация", b.handleModerate)
+	b.bot.Handle("\xf0\x9f\x93\x8b Заявки", b.handleApplications)
+	b.bot.Handle("\xf0\x9f\x9b\x92 Заказы", b.handleOrdersMenu)
+
+	// Main menu inline callbacks
 	b.bot.Handle(&telebot.InlineButton{Unique: "menu_stats"}, b.handleStats)
 	b.bot.Handle(&telebot.InlineButton{Unique: "menu_moderate"}, b.handleModerate)
 	b.bot.Handle(&telebot.InlineButton{Unique: "menu_applications"}, b.handleApplications)
 	b.bot.Handle(&telebot.InlineButton{Unique: "menu_orders"}, b.handleOrdersMenu)
 	b.bot.Handle(&telebot.InlineButton{Unique: "menu_back"}, b.handleBackToMenu)
+
+	// Stats refresh
+	b.bot.Handle(&telebot.InlineButton{Unique: "stats_refresh"}, b.handleStats)
 
 	// Order filter callbacks
 	b.bot.Handle(&telebot.InlineButton{Unique: "orders_all"}, b.handleOrdersAll)
@@ -92,6 +103,14 @@ func (b *Bot) registerHandlers() {
 	b.bot.Handle(&telebot.InlineButton{Unique: "orders_shipped"}, b.handleOrdersByStatus)
 	b.bot.Handle(&telebot.InlineButton{Unique: "orders_delivered"}, b.handleOrdersByStatus)
 	b.bot.Handle(&telebot.InlineButton{Unique: "orders_cancelled"}, b.handleOrdersByStatus)
+
+	// Order detail
+	b.bot.Handle(&telebot.InlineButton{Unique: "order_detail"}, b.handleOrderDetail)
+
+	// Pagination
+	b.bot.Handle(&telebot.InlineButton{Unique: "mod_page"}, b.handleModeratePage)
+	b.bot.Handle(&telebot.InlineButton{Unique: "app_page"}, b.handleApplicationsPage)
+	b.bot.Handle(&telebot.InlineButton{Unique: "orders_page"}, b.handleOrdersPage)
 
 	// Moderation callbacks
 	b.bot.Handle(&telebot.InlineButton{Unique: "mod_approve"}, b.callbackModerateApprove)
