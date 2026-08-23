@@ -1,7 +1,6 @@
 package server
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -22,11 +21,9 @@ import (
 )
 
 func (s *Server) setupRoutes() {
-	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	})
+	s.router.Get("/health", s.healthReady)
+	s.router.Get("/health/live", s.healthLive)
+	s.router.Get("/health/ready", s.healthReady)
 
 	s.router.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),

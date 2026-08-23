@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -100,15 +99,4 @@ type statusWriter struct {
 func (sw *statusWriter) WriteHeader(code int) {
 	sw.statusCode = code
 	sw.ResponseWriter.WriteHeader(code)
-}
-
-// LogSlowRequests starts a goroutine that logs requests slower than threshold.
-func LogSlowRequests(threshold time.Duration, log *slog.Logger) {
-	ticker := time.NewTicker(1 * time.Minute)
-	go func() {
-		for range ticker.C {
-			log.Info("slow request logger running",
-				slog.Duration("threshold", threshold))
-		}
-	}()
 }

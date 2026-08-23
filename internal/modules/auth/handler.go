@@ -160,6 +160,7 @@ func (h *AuthHandler) setRefreshCookie(w http.ResponseWriter, token string) {
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   !h.devMode,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(168 * time.Hour.Seconds()),
 	})
@@ -171,6 +172,7 @@ func (h *AuthHandler) clearRefreshCookie(w http.ResponseWriter) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   !h.devMode,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   -1,
 	})

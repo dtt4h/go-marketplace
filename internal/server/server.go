@@ -72,6 +72,54 @@ func (s *Server) Start() error {
 	return s.http.ListenAndServe()
 }
 
+func (s *Server) healthLive(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
+}
+
+func (s *Server) healthReady(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	checks := map[string]string{}
+	allOK := true
+
+	// DB ping
+	if err := s.db.Ping(ctx); err != nil {
+		checks["database"] = "fail"
+		allOK = false
+	} else {
+		checks["database"] = "ok"
+	}
+
+	// Redis ping (optional — app works without it in dev mode)
+	if s.rdb != nil {
+		if err := s.rdb.Ping(ctx).Err(); err != nil {
+			checks["redis"] = "fail"
+			allOK = false
+		} else {
+			checks["redis"] = "ok"
+		}
+	} else {
+		checks["redis"] = "skipped"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if !allOK {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	// Manual JSON to avoid extra encoding import
+	body := `{"status":"ok","checks":{"database":"` + checks["database"] + `","redis":"` + checks["redis"] + `"}}`
+	if !allOK {
+		body = `{"status":"fail","checks":{"database":"` + checks["database"] + `","redis":"` + checks["redis"] + `"}}`
+	}
+	_, _ = w.Write([]byte(body))
+}
+
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.log.Info("http server shutting down")
 	if s.http != nil {

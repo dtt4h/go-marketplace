@@ -87,8 +87,9 @@ services:
       minio:
         condition: service_healthy
     restart: unless-stopped
+    stop_grace_period: 35s
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health/ready || exit 1"]
       interval: 10s
       timeout: 5s
       start_period: 10s
@@ -140,6 +141,34 @@ services:
         condition: service_healthy
     profiles:
       - backup
+
+  # Автоматический бэкап БД по расписанию (cron)
+  # Запускается только с профилем production:
+  #   docker compose --profile production up -d
+  db-backup-cron:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD:-postgres}
+      PGDATABASE: ${DB_NAME:-marketplace}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      /bin/sh -c "
+      echo '0 3 * * * pg_dump -Fc -f /backups/marketplace_$(date +\%Y\%m\%d_\%H\%M\%S).dump && find /backups -name \"*.dump\" -mtime ${BACKUP_RETENTION_DAYS:-7} -delete' > /etc/crontabs/root &&
+      crond -f -l 2
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend
+    profiles:
+      - production
 
 volumes:
   pgdata:

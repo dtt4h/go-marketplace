@@ -3,6 +3,7 @@ package notifications
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // ReceiptService generates HTML receipts for orders.
@@ -53,12 +54,13 @@ func (s *receiptService) GenerateOrderSummaryHTML(items []OrderItem) string {
 }
 
 func (s *receiptService) GenerateOrderReceiptHTML(orderID, customerName, customerEmail, customerPhone, address, total, itemsHTML string) string {
+	date := time.Now().Format("02.01.2006 15:04")
 	return `
 		<div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
 			<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
 				<h1 style="margin: 0 0 10px 0; color: #333;">Чек</h1>
 				<p style="margin: 5px 0;"><strong>Заказ №:</strong> ` + orderID + `</p>
-				<p style="margin: 5px 0;"><strong>Дата:</strong> ` + fmt.Sprintf("%d", 0) + `</p>
+				<p style="margin: 5px 0;"><strong>Дата:</strong> ` + date + `</p>
 			</div>
 			<div style="margin-bottom: 20px;">
 				<h3 style="color: #555;">Покупатель</h3>
