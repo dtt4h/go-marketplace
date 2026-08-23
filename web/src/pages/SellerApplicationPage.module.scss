@@ -1,0 +1,123 @@
+@use '../shared/styles/global.scss' as *;
+
+.page {
+  margin: 0 auto;
+  padding: 48px 24px 72px;
+  width: 100%;
+  max-width: 840px;
+  color: $azure12;
+  font-family: $inter;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin-bottom: 8px;
+  color: $azure52;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: clamp(30px, 5vw, 42px);
+  line-height: 1.1;
+}
+
+.description {
+  margin-top: 12px;
+  max-width: 680px;
+  color: $azure35;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.card {
+  display: block;
+  border: 1px solid $grey91;
+  border-radius: 16px;
+  padding: 28px;
+  background-color: white;
+}
+
+.loginHint {
+  margin-top: 22px;
+  color: $azure35;
+  font-size: 13px;
+  text-align: center;
+}
+
+.loginLink {
+  color: $azure52;
+  font-weight: 700;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.stateContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.stateTitle {
+  font-size: 24px;
+}
+
+.stateMessage {
+  color: $azure35;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.errorMessage {
+  border: 1px solid rgba($danger, 0.25);
+  border-radius: 9px;
+  padding: 10px 12px;
+  width: 100%;
+  background-color: rgba($danger, 0.08);
+  color: $danger;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.pendingBadge,
+.approvedBadge,
+.rejectedBadge {
+  display: inline-flex;
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pendingBadge {
+  background-color: #fdf3e3;
+  color: #b7791f;
+}
+
+.approvedBadge {
+  background-color: $green93;
+  color: $green38;
+}
+
+.rejectedBadge {
+  background-color: rgba($danger, 0.08);
+  color: $danger;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 32px 16px 48px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+}

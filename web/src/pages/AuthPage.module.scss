@@ -52,33 +52,3 @@
     color: $grey46;
   }
 }
-
-.choiceContainer {
-  margin-top: 18px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  border-radius: 10px;
-  padding: 4px;
-  width: 326px;
-  height: 53px;
-  background: $grey953;
-}
-
-.choiceButton{
-  border-radius: 8px;
-  padding: 11px;
-  width: 157px;
-  height: 40px;
-  text-align: center;
-  font-family: $inter;
-  font-size: 14px;
-  font-weight: 700;
-  color: $azure12;
-  &[aria-pressed='true'] {
-    box-shadow: 0 1px 3px 0 rgba(16, 24, 40, 0.12);
-    background: white;
-  }
-}

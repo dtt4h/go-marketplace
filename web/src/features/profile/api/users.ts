@@ -20,11 +20,19 @@ export async function getCurrentUser(
 
 export async function updateCurrentUser(
   data: UpdateProfileRequest,
+  accessToken?: string,
   ): Promise<UserProfile> {
-    const response = await apiClient.patch<UserProfile>(
-      '/users/me', 
-      data,
-    )
+  const response = await apiClient.patch<UserProfile>(
+    '/users/me',
+    data,
+    accessToken
+      ? {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      : undefined,
+  )
 
     return response.data
 }
