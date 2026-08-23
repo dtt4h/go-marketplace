@@ -150,19 +150,29 @@ func createUserRowToUser(row db.CreateUserRow) db.User {
 
 func getUserByEmailRowToUser(row db.GetUserByEmailRow) db.User {
 	return db.User{
-		ID:       row.ID,
-		Email:    row.Email,
-		Role:     row.Role,
-		Username: row.Username,
+		ID:           row.ID,
+		Email:        row.Email,
+		PasswordHash: row.PasswordHash,
+		Role:         row.Role,
+		Username:     row.Username,
+		AvatarUrl:    row.AvatarUrl,
+		Phone:        row.Phone,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}
 }
 
 func getUserByIDRowToUser(row db.GetUserByIDRow) db.User {
 	return db.User{
-		ID:       row.ID,
-		Email:    row.Email,
-		Role:     row.Role,
-		Username: row.Username,
+		ID:           row.ID,
+		Email:        row.Email,
+		PasswordHash: row.PasswordHash,
+		Role:         row.Role,
+		Username:     row.Username,
+		AvatarUrl:    row.AvatarUrl,
+		Phone:        row.Phone,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}
 }
 
