@@ -96,6 +96,23 @@
       border: 1px solid $azure84;
       border-radius: 9px;
       padding: 0;
+      min-height: 48px;
+      font-family: $inter;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      transition: opacity 0.2s ease;
+
+      &:focus-visible {
+        outline: 2px solid $azure52;
+        outline-offset: 2px;
+      }
+
+      &:hover {
+        cursor: pointer;
+        opacity: 0.8;
+      }
     }
     .toProfile {
       display: flex;

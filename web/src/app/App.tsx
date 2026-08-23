@@ -11,6 +11,7 @@ import { NotFoundPage } from '../pages/NotFoundPage'
 import { ProductPage } from '../pages/ProductPage'
 import { CartPage } from '../pages/CartPage'
 import { CheckoutPage } from '../pages/CheckoutPage'
+import { SellerApplicationPage } from '../pages/SellerApplicationPage'
 import { MainLayout } from './layout/MainLayout'
 
 function App() {
@@ -55,10 +56,14 @@ function App() {
         <Route
           path="profile"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['seller']}>
               <ProfilePage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="seller/application"
+          element={<SellerApplicationPage />}
         />
       </Route>
 

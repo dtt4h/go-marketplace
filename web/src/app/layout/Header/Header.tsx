@@ -8,12 +8,18 @@ import { Button } from '../../../shared/ui/Button/Button'
 import { Profile } from '../../../shared/assets/icons/Profile'
 import { Cart } from '../../../shared/assets/icons/Cart'
 import { useCartStore } from '../../../features/cart/store/cartStore'
+import { useAuthStore } from '../../../features/auth/store/authStore'
 import cls from './Header.module.scss'
 
 export function Header() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const user = useAuthStore((state) => state.user)
   const searchFromUrl = searchParams.get('search') ?? ''
+  const sellerDestination =
+    user?.role === 'seller'
+      ? '/profile'
+      : '/seller/application'
   const cartItemsCount = useCartStore((state) =>
     state.items.reduce(
       (total, item) => total + item.quantity,
@@ -77,12 +83,12 @@ export function Header() {
           </Button>
         </form>
         <div className={cls.buttonsContainer}>
-          <Button
+          <Link
             className={cls.becomeSeller}
-            type="button"
+            to={sellerDestination}
           >
             Продавать
-          </Button>
+          </Link>
           <Link
             className={cls.toProfile}
             to="/profile"

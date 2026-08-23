@@ -38,9 +38,10 @@ web/dist/
 .git/
 .gitignore
 
-# Docs (not needed in runtime image)
-docs/
+# Documentation sources that are not needed for the application build
+docs/adr/
+docs/grafana/
 *.md
 
-# Migrations are embedded in binary, no need to copy
-internal/migrations/*.sql
+# SQL migrations must remain in the build context: they are embedded in the
+# application binary at compile time via go:embed.

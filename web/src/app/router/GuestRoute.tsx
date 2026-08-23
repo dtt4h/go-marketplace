@@ -12,8 +12,17 @@ export function GuestRoute({
 }: GuestRouteProps) {
   const user = useAuthStore((state) => state.user)
 
-  if (user) {
+  if (user?.role === 'seller') {
     return <Navigate to="/profile" replace />
   }
+
+  if (user?.role === 'buyer') {
+    return <Navigate to="/seller/application" replace />
+  }
+
+  if (user?.role === 'admin') {
+    return <Navigate to="/" replace />
+  }
+
   return children
 }
