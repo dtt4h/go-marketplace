@@ -1,0 +1,156 @@
+import type { FormEvent } from 'react'
+import {
+  Link,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
+import { Button } from '../../../shared/ui/Button/Button'
+import { Profile } from '../../../shared/assets/icons/Profile'
+import { Cart } from '../../../shared/assets/icons/Cart'
+import { useCartStore } from '../../../features/cart/store/cartStore'
+import { useAuthStore } from '../../../features/auth/store/authStore'
+import cls from './Header.module.scss'
+
+export function Header() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const user = useAuthStore((state) => state.user)
+  const searchFromUrl = searchParams.get('search') ?? ''
+  const sellerDestination =
+    user?.role === 'seller'
+      ? '/profile'
+      : '/seller/application'
+  const cartItemsCount = useCartStore((state) =>
+    state.items.reduce(
+      (total, item) => total + item.quantity,
+      0,
+    ),
+  )
+
+  function handleSearchSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): void {
+    event.preventDefault()
+
+    const formData = new FormData(event.currentTarget)
+    const search = String(formData.get('search') ?? '').trim()
+    const nextSearchParams = new URLSearchParams()
+
+    if (search) {
+      nextSearchParams.set('search', search)
+    }
+
+    const query = nextSearchParams.toString()
+
+    navigate(query ? `/catalog?${query}` : '/catalog')
+  }
+
+  return (
+    <header className={cls.header}>
+      <div className={cls.top}>
+        <p className={cls.garantText}>Проверка подлинности каждого лота экспертом · Безопасная сделка через эскроу</p>
+      </div>
+      <div className={cls.mid}>
+        <div className={cls.logoContainer}>
+          <span className={cls.logoLetter}>T</span>
+          <Link to="/" aria-label="На главную" className={cls.logoWord}>Тарелка</Link>
+        </div>
+        <form
+          className={cls.searchbarContainer}
+          role="search"
+          onSubmit={handleSearchSubmit}
+        >
+          <label
+            className={cls.visuallyHidden}
+            htmlFor="catalog-search"
+          >
+            Поиск по каталогу
+          </label>
+          <input 
+            id="catalog-search"
+            key={searchFromUrl}
+            name="search"
+            type="search"
+            defaultValue={searchFromUrl}
+            className={cls.searchInput}
+            placeholder='Поиск по антиквариату: комод, монета, икона…'
+          />
+          <Button
+            className={cls.searchButton}
+            type="submit"
+          >
+            Найти
+          </Button>
+        </form>
+        <div className={cls.buttonsContainer}>
+          <Link
+            className={cls.becomeSeller}
+            to={sellerDestination}
+          >
+            Продавать
+          </Link>
+          <Link
+            className={cls.toProfile}
+            to="/profile"
+            aria-label="Открыть профиль"
+            title="Открыть профиль"
+          >
+            <Profile aria-hidden="true" focusable="false" />
+          </Link>
+          <Link
+            className={cls.toCart}
+            to="/cart"
+            aria-label={`Открыть корзину, товаров: ${cartItemsCount}`}
+            title="Открыть корзину"
+          >
+            <Cart aria-hidden="true" focusable="false" />
+            {cartItemsCount > 0 && (
+              <span className={cls.cartBadge} aria-hidden="true">
+                {cartItemsCount}
+              </span>
+            )}
+          </Link>
+        </div>
+      </div>
+      <nav aria-label="Основная навигация" className={cls.bot}>
+        <ul className={cls.categoryList}>
+          <li>
+            <Link to="/catalog">
+              Весь каталог
+            </Link>
+          </li>
+          <li>
+            <Link to="/catalog?category_id=1">
+              Мебель
+            </Link>
+          </li>
+          <li>
+            <Link to="/catalog?category_id=2">
+              Живопись
+            </Link>
+          </li>
+          <li>
+            <Link to="/catalog?category_id=3">
+              Монеты
+            </Link>
+          </li>
+          <li>
+            <Link to="/catalog?category_id=4">
+              Часы
+            </Link>
+          </li>
+          <li>
+            <Link to="/catalog?category_id=5">
+              Фарфор
+            </Link>
+          </li>
+          <li>
+            <Link to="/catalog?category_id=6">
+              Освещение
+            </Link>
+          </li>
+        </ul>
+      </nav>
+    </header>
+  )
+}

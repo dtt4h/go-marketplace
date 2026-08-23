@@ -53,27 +53,44 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 }
 
 const createProductImage = `-- name: CreateProductImage :one
-INSERT INTO product_images (product_id, url, position)
-VALUES ($1, $2, $3)
-RETURNING id, product_id, url, position
+INSERT INTO product_images (product_id, url, position, object_key)
+VALUES ($1, $2, $3, $4)
+RETURNING id, product_id, url, position, object_key
 `
 
 type CreateProductImageParams struct {
-	ProductID int64  `json:"productId"`
-	Url       string `json:"url"`
-	Position  int32  `json:"position"`
+	ProductID int64       `json:"productId"`
+	Url       string      `json:"url"`
+	Position  int32       `json:"position"`
+	ObjectKey pgtype.Text `json:"objectKey"`
 }
 
 func (q *Queries) CreateProductImage(ctx context.Context, arg CreateProductImageParams) (ProductImage, error) {
-	row := q.db.QueryRow(ctx, createProductImage, arg.ProductID, arg.Url, arg.Position)
+	row := q.db.QueryRow(ctx, createProductImage,
+		arg.ProductID,
+		arg.Url,
+		arg.Position,
+		arg.ObjectKey,
+	)
 	var i ProductImage
 	err := row.Scan(
 		&i.ID,
 		&i.ProductID,
 		&i.Url,
 		&i.Position,
+		&i.ObjectKey,
 	)
 	return i, err
+}
+
+const deleteImageByID = `-- name: DeleteImageByID :exec
+DELETE FROM product_images
+WHERE id = $1
+`
+
+func (q *Queries) DeleteImageByID(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteImageByID, id)
+	return err
 }
 
 const deleteProduct = `-- name: DeleteProduct :exec
@@ -96,9 +113,28 @@ func (q *Queries) DeleteProductImages(ctx context.Context, productID int64) erro
 	return err
 }
 
+const getImageByID = `-- name: GetImageByID :one
+SELECT id, product_id, url, position, object_key
+FROM product_images
+WHERE id = $1
+`
+
+func (q *Queries) GetImageByID(ctx context.Context, id int64) (ProductImage, error) {
+	row := q.db.QueryRow(ctx, getImageByID, id)
+	var i ProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.Url,
+		&i.Position,
+		&i.ObjectKey,
+	)
+	return i, err
+}
+
 const getProduct = `-- name: GetProduct :one
 SELECT p.id, p.store_id, p.category_id, p.title, p.description,
-       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       p.price, p.stock, p.status, p.rejection_reason, p.created_at, p.updated_at,
        s.name AS store_name, s.description AS store_description,
        c.name AS category_name, c.slug AS category_slug
 FROM products p
@@ -116,6 +152,7 @@ type GetProductRow struct {
 	Price            pgtype.Numeric     `json:"price"`
 	Stock            int32              `json:"stock"`
 	Status           ProductStatus      `json:"status"`
+	RejectionReason  pgtype.Text        `json:"rejectionReason"`
 	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
 	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
 	StoreName        pgtype.Text        `json:"storeName"`
@@ -136,6 +173,7 @@ func (q *Queries) GetProduct(ctx context.Context, id int64) (GetProductRow, erro
 		&i.Price,
 		&i.Stock,
 		&i.Status,
+		&i.RejectionReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StoreName,
@@ -213,7 +251,7 @@ func (q *Queries) ListCategories(ctx context.Context) ([]ListCategoriesRow, erro
 }
 
 const listProductImages = `-- name: ListProductImages :many
-SELECT id, product_id, url, position
+SELECT id, product_id, url, position, object_key
 FROM product_images
 WHERE product_id = $1
 ORDER BY position ASC
@@ -233,6 +271,7 @@ func (q *Queries) ListProductImages(ctx context.Context, productID int64) ([]Pro
 			&i.ProductID,
 			&i.Url,
 			&i.Position,
+			&i.ObjectKey,
 		); err != nil {
 			return nil, err
 		}
@@ -245,7 +284,7 @@ func (q *Queries) ListProductImages(ctx context.Context, productID int64) ([]Pro
 }
 
 const listProductImagesByProductIDs = `-- name: ListProductImagesByProductIDs :many
-SELECT id, product_id, url, position
+SELECT id, product_id, url, position, object_key
 FROM product_images
 WHERE product_id = ANY($1::bigint[])
 ORDER BY product_id, position ASC
@@ -265,6 +304,7 @@ func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, dollar_1 []
 			&i.ProductID,
 			&i.Url,
 			&i.Position,
+			&i.ObjectKey,
 		); err != nil {
 			return nil, err
 		}
@@ -369,6 +409,92 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]L
 	return items, nil
 }
 
+const listProductsByStoreID = `-- name: ListProductsByStoreID :many
+SELECT p.id, p.store_id, p.category_id, p.title, p.description,
+       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       s.name AS store_name, s.description AS store_description,
+       c.name AS category_name, c.slug AS category_slug
+FROM products p
+LEFT JOIN stores s ON p.store_id = s.id
+LEFT JOIN categories c ON p.category_id = c.id
+WHERE p.store_id = $1
+  AND p.status = 'active'
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListProductsByStoreIDParams struct {
+	StoreID int64 `json:"storeId"`
+	Limit   int32 `json:"limit"`
+	Offset  int32 `json:"offset"`
+}
+
+type ListProductsByStoreIDRow struct {
+	ID               int64              `json:"id"`
+	StoreID          int64              `json:"storeId"`
+	CategoryID       pgtype.Int8        `json:"categoryId"`
+	Title            string             `json:"title"`
+	Description      pgtype.Text        `json:"description"`
+	Price            pgtype.Numeric     `json:"price"`
+	Stock            int32              `json:"stock"`
+	Status           ProductStatus      `json:"status"`
+	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
+	StoreName        pgtype.Text        `json:"storeName"`
+	StoreDescription pgtype.Text        `json:"storeDescription"`
+	CategoryName     pgtype.Text        `json:"categoryName"`
+	CategorySlug     pgtype.Text        `json:"categorySlug"`
+}
+
+func (q *Queries) ListProductsByStoreID(ctx context.Context, arg ListProductsByStoreIDParams) ([]ListProductsByStoreIDRow, error) {
+	rows, err := q.db.Query(ctx, listProductsByStoreID, arg.StoreID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductsByStoreIDRow
+	for rows.Next() {
+		var i ListProductsByStoreIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StoreID,
+			&i.CategoryID,
+			&i.Title,
+			&i.Description,
+			&i.Price,
+			&i.Stock,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.StoreName,
+			&i.StoreDescription,
+			&i.CategoryName,
+			&i.CategorySlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductsByStoreIDCount = `-- name: ListProductsByStoreIDCount :one
+SELECT COUNT(*)
+FROM products p
+WHERE p.store_id = $1
+  AND p.status = 'active'
+`
+
+func (q *Queries) ListProductsByStoreIDCount(ctx context.Context, storeID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, listProductsByStoreIDCount, storeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const listProductsCount = `-- name: ListProductsCount :one
 SELECT COUNT(*)
 FROM products p
@@ -403,18 +529,109 @@ func (q *Queries) ListProductsCount(ctx context.Context, arg ListProductsCountPa
 
 const moderateProduct = `-- name: ModerateProduct :execresult
 UPDATE products
-SET status = $2,
+SET status = $2::product_status,
+    rejection_reason = CASE
+        WHEN $2::product_status = 'rejected'::product_status THEN COALESCE($3::text, '')
+        ELSE NULL
+    END,
     updated_at = now()
 WHERE id = $1
 `
 
 type ModerateProductParams struct {
-	ID     int64         `json:"id"`
-	Status ProductStatus `json:"status"`
+	ID              int64         `json:"id"`
+	Status          ProductStatus `json:"status"`
+	RejectionReason pgtype.Text   `json:"rejectionReason"`
 }
 
 func (q *Queries) ModerateProduct(ctx context.Context, arg ModerateProductParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, moderateProduct, arg.ID, arg.Status)
+	return q.db.Exec(ctx, moderateProduct, arg.ID, arg.Status, arg.RejectionReason)
+}
+
+const listProductsByStatus = `-- name: ListProductsByStatus :many
+SELECT p.id, p.store_id, p.category_id, p.title, p.description,
+       p.price, p.stock, p.status, p.rejection_reason, p.created_at, p.updated_at,
+       s.name AS store_name, s.description AS store_description,
+       c.name AS category_name, c.slug AS category_slug
+FROM products p
+LEFT JOIN stores s ON p.store_id = s.id
+LEFT JOIN categories c ON p.category_id = c.id
+WHERE p.status = $1
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListProductsByStatusParams struct {
+	Status ProductStatus `json:"status"`
+	Limit  int32         `json:"limit"`
+	Offset int32         `json:"offset"`
+}
+
+type ListProductsByStatusRow struct {
+	ID               int64              `json:"id"`
+	StoreID          int64              `json:"storeId"`
+	CategoryID       pgtype.Int8        `json:"categoryId"`
+	Title            string             `json:"title"`
+	Description      pgtype.Text        `json:"description"`
+	Price            pgtype.Numeric     `json:"price"`
+	Stock            int32              `json:"stock"`
+	Status           ProductStatus      `json:"status"`
+	RejectionReason  pgtype.Text        `json:"rejectionReason"`
+	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
+	StoreName        pgtype.Text        `json:"storeName"`
+	StoreDescription pgtype.Text        `json:"storeDescription"`
+	CategoryName     pgtype.Text        `json:"categoryName"`
+	CategorySlug     pgtype.Text        `json:"categorySlug"`
+}
+
+func (q *Queries) ListProductsByStatus(ctx context.Context, arg ListProductsByStatusParams) ([]ListProductsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, listProductsByStatus, arg.Status, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProductsByStatusRow
+	for rows.Next() {
+		var i ListProductsByStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StoreID,
+			&i.CategoryID,
+			&i.Title,
+			&i.Description,
+			&i.Price,
+			&i.Stock,
+			&i.Status,
+			&i.RejectionReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.StoreName,
+			&i.StoreDescription,
+			&i.CategoryName,
+			&i.CategorySlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductsByStatusCount = `-- name: ListProductsByStatusCount :one
+SELECT COUNT(*)
+FROM products p
+WHERE p.status = $1
+`
+
+func (q *Queries) ListProductsByStatusCount(ctx context.Context, status ProductStatus) (int64, error) {
+	row := q.db.QueryRow(ctx, listProductsByStatusCount, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const updateProduct = `-- name: UpdateProduct :one

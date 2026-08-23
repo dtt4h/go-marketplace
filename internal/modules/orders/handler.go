@@ -12,36 +12,91 @@ import (
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
 )
 
+// OrderHandler handles HTTP requests for order operations.
 type OrderHandler struct {
 	service OrderService
 }
 
+// NewOrderHandler creates a new OrderHandler.
 func NewOrderHandler(service OrderService) *OrderHandler {
 	return &OrderHandler{service: service}
 }
 
+// CreateOrder godoc
+// @Summary      Create an order (authenticated or guest)
+// @Description  Creates an order. Authenticated users — user_id from JWT. Guests — customer info required.
+// @Tags         orders
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.CreateOrderRequest  true  "Order data"
+// @Success      201  {object}  dtos.OrderResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Router       /orders [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := mw.UserIDFromCtx(r.Context())
-	if !ok {
-		httputil.Unauthorized(w, "not authenticated")
-		return
-	}
-
 	var req dtos.CreateOrderRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
 		httputil.ValidationError(w, "invalid request body", nil)
 		return
 	}
 
+	// Validate items
+	if len(req.Items) == 0 {
+		httputil.ValidationError(w, "order must contain at least one item", nil)
+		return
+	}
+	for i, item := range req.Items {
+		if item.ProductID <= 0 {
+			httputil.ValidationError(w, "invalid item at index "+strconv.Itoa(i), nil)
+			return
+		}
+		if item.Quantity <= 0 {
+			httputil.ValidationError(w, "quantity must be positive for item at index "+strconv.Itoa(i), nil)
+			return
+		}
+	}
+
+	// Validate delivery
+	if dtos.ValidateNonEmptyString(req.Delivery.Address, "delivery.address").IsEmpty() == false {
+		// address is fine
+	} else {
+		// check if it's empty
+	}
+	if req.Delivery.Address == "" {
+		httputil.ValidationError(w, "delivery address is required", nil)
+		return
+	}
+
+	// If authenticated — use userID from JWT; otherwise guest checkout
+	var userID *int64
+	if uid, ok := mw.UserIDFromCtx(r.Context()); ok {
+		userID = &uid
+	} else {
+		// Guest: validate customer info
+		if req.Customer == nil {
+			httputil.ValidationError(w, "customer info is required for guest checkout", nil)
+			return
+		}
+		if errs := dtos.ValidateNonEmptyString(req.Customer.FirstName, "customer.first_name"); !errs.IsEmpty() {
+			httputil.ValidationError(w, "validation failed", errs)
+			return
+		}
+		if errs := dtos.ValidateNonEmptyString(req.Customer.Email, "customer.email"); !errs.IsEmpty() {
+			httputil.ValidationError(w, "validation failed", errs)
+			return
+		}
+	}
+
 	resp, err := h.service.CreateOrder(r.Context(), userID, req)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrOrderEmpty):
+		case errors.Is(err, ErrOrderEmpty), errors.Is(err, ErrAddressRequired),
+			errors.Is(err, ErrInvalidProductID), errors.Is(err, ErrInsufficientStock),
+			errors.Is(err, ErrInvalidQuantity), errors.Is(err, ErrGuestCustomerReq):
 			httputil.ValidationError(w, err.Error(), nil)
-		case errors.Is(err, ErrInsufficientStock):
-			httputil.ValidationError(w, err.Error(), nil)
+		case errors.Is(err, ErrProductNotFound):
+			httputil.NotFound(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -49,6 +104,48 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusCreated, resp)
 }
 
+// GetPublicOrder godoc
+// @Summary      Get order by public token (guest access)
+// @Description  Returns order details by public token — no auth required
+// @Tags         orders
+// @Produce      json
+// @Param        public_token  path  string  true  "Public token"
+// @Success      200  {object}  dtos.OrderResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /orders/public/{public_token} [get]
+func (h *OrderHandler) GetPublicOrder(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "public_token")
+	if token == "" {
+		httputil.ValidationError(w, "public token is required", nil)
+		return
+	}
+
+	resp, err := h.service.GetOrderByPublicToken(r.Context(), token)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrOrderNotFound):
+			httputil.NotFound(w, err.Error())
+		default:
+			httputil.InternalError(w, r, err.Error())
+		}
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, resp)
+}
+
+// GetOrder godoc
+// @Summary      Get order by ID
+// @Description  Returns order details (buyer or seller of items in order)
+// @Tags         orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path  int  true  "Order ID"
+// @Success      200  {object}  dtos.OrderResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /orders/me/{id} [get]
 func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -70,7 +167,7 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrForbidden):
 			httputil.Forbidden(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -78,6 +175,16 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// ListOrdersByUser godoc
+// @Summary      List current user's orders
+// @Tags         orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        page   query  int  false  "Page number (default 1)"
+// @Param        limit  query  int  false  "Items per page (default 20, max 100)"
+// @Success      200  {object}  httputil.PaginatedResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /orders/me [get]
 func (h *OrderHandler) ListOrdersByUser(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -89,7 +196,7 @@ func (h *OrderHandler) ListOrdersByUser(w http.ResponseWriter, r *http.Request) 
 
 	items, total, err := h.service.ListOrdersByUser(r.Context(), userID, page, limit)
 	if err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 
@@ -101,6 +208,18 @@ func (h *OrderHandler) ListOrdersByUser(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// ListOrdersBySeller godoc
+// @Summary      List orders for seller's products
+// @Description  Returns orders containing products from seller's store (seller role)
+// @Tags         orders
+// @Security     BearerAuth
+// @Produce      json
+// @Param        page   query  int  false  "Page number (default 1)"
+// @Param        limit  query  int  false  "Items per page (default 20, max 100)"
+// @Success      200  {object}  httputil.PaginatedResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Router       /orders/seller [get]
 func (h *OrderHandler) ListOrdersBySeller(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -112,7 +231,7 @@ func (h *OrderHandler) ListOrdersBySeller(w http.ResponseWriter, r *http.Request
 
 	items, total, err := h.service.ListOrdersBySeller(r.Context(), userID, page, limit)
 	if err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 
@@ -124,6 +243,21 @@ func (h *OrderHandler) ListOrdersBySeller(w http.ResponseWriter, r *http.Request
 	})
 }
 
+// UpdateOrderStatus godoc
+// @Summary      Update order status
+// @Description  Transitions order status (seller or buyer)
+// @Tags         orders
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id       path  int                            true  "Order ID"
+// @Param        request  body  dtos.UpdateOrderStatusRequest  true  "New status"
+// @Success      200  {object}  dtos.OrderResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /orders/{id}/status [patch]
 func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -150,12 +284,59 @@ func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 			httputil.NotFound(w, err.Error())
 		case errors.Is(err, ErrForbidden):
 			httputil.Forbidden(w, err.Error())
-		case errors.Is(err, ErrInvalidStatus):
-			httputil.ValidationError(w, err.Error(), nil)
-		case errors.Is(err, ErrInvalidStatusTrans):
+		case errors.Is(err, ErrInvalidStatus), errors.Is(err, ErrInvalidStatusTrans):
 			httputil.ValidationError(w, err.Error(), nil)
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
+		}
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, resp)
+}
+
+// UpdateOrderTracking godoc
+// @Summary      Set tracking number for an order
+// @Description  Seller or admin sets tracking number after shipment
+// @Tags         orders
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id       path  int                            true  "Order ID"
+// @Param        request  body  dtos.UpdateTrackingRequest     true  "Tracking number"
+// @Success      200  {object}  dtos.OrderResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Failure      403  {object}  httputil.ErrorResponse
+// @Failure      404  {object}  httputil.ErrorResponse
+// @Router       /orders/{id}/tracking [patch]
+func (h *OrderHandler) UpdateOrderTracking(w http.ResponseWriter, r *http.Request) {
+	userID, ok := mw.UserIDFromCtx(r.Context())
+	if !ok {
+		httputil.Unauthorized(w, "not authenticated")
+		return
+	}
+
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		httputil.ValidationError(w, "invalid order id", nil)
+		return
+	}
+
+	var req dtos.UpdateTrackingRequest
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.ValidationError(w, "invalid request body", nil)
+		return
+	}
+
+	resp, err := h.service.UpdateOrderTracking(r.Context(), userID, id, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrOrderNotFound):
+			httputil.NotFound(w, err.Error())
+		case errors.Is(err, ErrForbidden), errors.Is(err, ErrTrackingOnlySeller):
+			httputil.Forbidden(w, err.Error())
+		default:
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}

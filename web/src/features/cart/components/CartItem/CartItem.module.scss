@@ -1,0 +1,186 @@
+@use '../../../../shared/styles/global.scss' as *;
+
+.item {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 104px minmax(110px, auto);
+  grid-template-areas: 'image info quantity price';
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  min-height: 130px;
+  border: 1px solid $grey91;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.imageContainer {
+  grid-area: image;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  background-color: $grey953;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholderIcon {
+  width: 44px;
+  height: 44px;
+}
+
+.info {
+  grid-area: info;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  gap: 7px;
+}
+
+.category {
+  font-family: $inter;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: $azure52;
+}
+
+.titleLink {
+  max-width: 100%;
+  font-family: $inter;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.title {
+  color: $azure16;
+  overflow-wrap: anywhere;
+}
+
+.store {
+  font-family: $inter;
+  font-weight: 400;
+  font-size: 12px;
+  color: $grey46;
+}
+
+.quantityControl {
+  grid-area: quantity;
+  padding: 8px 11px;
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  border-radius: 9px;
+  border: 1px solid $azure84;
+  max-width: 104px;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.quantityButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-family: $inter;
+  font-weight: 400;
+  font-size: 18px;
+  text-align: center;
+  color: $azure27;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:not(:disabled):hover {
+    transform: scale(1.15);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $azure52;
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}
+
+.quantityValue {
+  min-width: 16px;
+  font-family: $inter;
+  font-size: 14px;
+  text-align: center;
+  color: $azure16;
+}
+
+.priceBlock {
+  grid-area: price;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 110px;
+  gap: 4px;
+  font-family: $inter;
+}
+
+.price {
+  font-weight: 700;
+  font-size: 18px;
+  text-align: right;
+  color: $azure12;
+  white-space: nowrap;
+}
+
+.removeButton {
+  padding: 1px 6px;
+  width: 60px;
+  font-weight: 400;
+  font-size: 12px;
+  text-align: center;
+  color: $azure65;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $azure52;
+    outline-offset: 2px;
+  }
+}
+
+@media (max-width: 650px) {
+  .item {
+    grid-template-columns: 80px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'image info price'
+      'image info quantity';
+  }
+
+  .imageContainer {
+    width: 80px;
+    height: 80px;
+  }
+
+  .quantityControl,
+  .priceBlock {
+    justify-self: end;
+  }
+}

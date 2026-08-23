@@ -43,45 +43,105 @@ marketplace/
 │   │   ├── server.go             # Инициализация chi, middleware, запуск/остановка
 │   │   ├── routes.go             # Регистрация всех роутов (/api/v1/...)
 │   │   ├── dtos/                 # DTO для запросов/ответов (по модулям)
-│   │   │   └── auth.go
+│   │   │   ├── auth.go           # RegisterRequest, LoginRequest, AuthResponse, ...
+│   │   │   ├── user.go           # UpdateProfileRequest, ProfileResponse, StoreResponse
+│   │   │   ├── products.go       # CreateProductRequest, ProductResponse, NumericToStr, ...
+│   │   │   ├── orders.go         # CreateOrderRequest, OrderResponse, OrderListItem, ...
+│   │   │   └── payments.go       # CreatePaymentRequest, PaymentResponse, WebhookRequest
 │   │   └── middleware/           # Слой middleware
 │   │       ├── auth.go           # JWTAuth, RoleGuard, UserIDFromCtx
 │   │       ├── cors.go           # CORS
-│   │       └── logger.go         # Логирование запросов
+│   │       ├── logger.go         # Логирование запросов
+│   │       └── ratelimit.go      # Rate limiting (IP-based token bucket)
 │   ├── database/                 # Подключение к БД, sqlc-сгенерированный код
 │   │   ├── database.go           # Подключение pgxpool
 │   │   └── sqlc/                 # Сгенерировано sqlc (не редактировать вручную!)
-│   │       ├── db.go             # Конструктор Queries
-│   │       ├── models.go         # User, RefreshToken, все enum
-│   │       └── auth.sql.go       # Сгенерированные запросы из sql/queries/auth.sql
+│   │       ├── db.go             # Конструктор Queries, DBPool interface
+│   │       ├── models.go         # User, Store, Product, Order, Payment, все enum
+│   │       ├── auth.sql.go       # Запросы из sql/queries/auth.sql
+│   │       ├── users.sql.go      # Запросы из sql/queries/users.sql
+│   │       ├── products.sql.go   # Запросы из sql/queries/products.sql
+│   │       ├── orders.sql.go     # Запросы из sql/queries/orders.sql
+│   │       ├── payments.sql.go   # Запросы из sql/queries/payments.sql
+│   │       ├── cart.sql.go       # Запросы из sql/queries/cart.sql
+│   │       ├── seller_applications.sql.go # Заявки продавцов
+│   │       └── models.go         # Модели (включая Order.ExpiresAt, Product.RejectionReason)
 │   ├── logger/                   # Настройка slog
 │   │   └── logger.go
+│   ├── storage/                  # S3/MinIO объектное хранилище
+│   │   └── s3.go                 # ObjectStorageClient, NewObjectStorage
 │   └── modules/                  # Бизнес-модули
-│       └── auth/                 # Модуль аутентификации (реализован)
-│           ├── handler.go        # HTTP-хендлеры (Register, Login, Refresh, Logout)
-│           ├── service.go        # Бизнес-логика (bcrypt, JWT, refresh-ротация)
-│           └── repository.go     # Слой данных (обёртка над sqlc.Queries)
+│       ├── auth/                 # Аутентификация
+│       │   ├── handler.go        # Register, Login, Refresh, Logout
+│       │   ├── service.go        # bcrypt, JWT, refresh-ротация
+│       │   └── repository.go     # Обёртка над sqlc.Queries
+│       ├── users/                # Пользователи и магазины
+│       │   ├── handler.go        # GetProfile, UpdateProfile, GetStore, UpdateStore
+│       │   ├── service.go        # Бизнес-логика профиля и магазина
+│       │   └── repository.go     # Запросы к users, stores; CreateStoreWithRole (транзакция)
+│       ├── products/             # Товары и категории
+│       │   ├── handler.go        # CRUD товаров, категории, модерация, ListProductsByStatus
+│       │   ├── image_handler.go  # Загрузка/удаление изображений
+│       │   ├── service.go        # Валидация, бизнес-логика, ModerateProductWithReason
+│       │   ├── image_upload_service.go # Работа с S3 для изображений
+│       │   └── repository.go     # Запросы к products, product_images, categories
+│       ├── orders/               # Заказы
+│       │   ├── handler.go        # CreateOrder, GetOrder, ListOrders, UpdateStatus, Tracking
+│       │   ├── service.go        # Транзакции, расчёт суммы, статус-машина, delivery cost=0
+│       │   ├── expirer.go        # OrderExpirer — авто-отмена просроченных заказов
+│       │   ├── repository.go     # Запросы к orders, order_items
+│       │   ├── admin_handler.go  # Админ-эндпоинты заказов
+│       │   ├── admin_service.go  # Админ-логика заказов
+│       │   ├── admin_repository.go # Админ-запросы
+│       │   ├── admin_stats_handler.go  # Статистика (админ)
+│       │   ├── admin_stats_service.go  # Логика статистики
+│       │   └── admin_stats_repository.go # Запросы статистики
+│       ├── payments/             # Платежи
+│       │   ├── handler.go        # CreatePayment, GetPayment, Webhook, Refund, GuestPayment
+│       │   ├── service.go        # Платёжная логика, webhook-обработка
+│       │   └── repository.go     # Запросы к payments
+│       ├── cart/                 # Корзина (серверная, для авторизованных)
+│       │   ├── handler.go        # GetCart, AddItem, UpdateItem, RemoveItem, Clear
+│       │   └── service.go        # Бизнес-логика корзины
+│       ├── sellerapplications/   # Заявки на статус продавца
+│       │   ├── handler.go        # Create, ListMine, ListPending, UpdateStatus
+│       │   ├── service.go        # Approve→CreateStoreWithRole, Reject→email с reason
+│       │   └── repository.go     # Запросы к seller_applications
+│       └── notifications/        # Email-уведомления
+│           ├── email.go          # SMTP-отправка
+│           ├── receipt.go        # Генерация HTML-чеков
+│           └── service.go        # Оркестрация уведомлений
 ├── pkg/                          # Переиспользуемые утилиты
-│   └── httputil/                 # HTTP-хелперы (JSON, DecodeJSON, Error, ...)
-│       ├── pagination.go
-│       └── response.go
+│   ├── httputil/                 # HTTP-хелперы
+│   │   ├── pagination.go         # ParsePagination
+│   │   └── response.go           # JSON, DecodeJSON, Error-хелперы
+│   └── pgutil/                   # PostgreSQL-утилиты
+│       └── pgutil.go             # TextToPtr, PtrToText
 ├── sql/                          # SQL-файлы для sqlc
-│   ├── schemas/                  # Копия схемы для sqlc (дублирует migrations)
+│   ├── schemas/                  # Копия схемы для sqlc
 │   │   └── 000001_init.up.sql
 │   └── queries/                  # Именованные SQL-запросы
-│       └── auth.sql
+│       ├── auth.sql
+│       ├── users.sql
+│       ├── products.sql
+│       ├── orders.sql
+│       └── payments.sql
 ├── migrations/                   # SQL-миграции (golang-migrate)
 │   ├── 000001_init.up.sql
 │   └── 000001_init.down.sql
 ├── docs/                         # Документация
 │   ├── PRD.md
 │   ├── use-cases.md
+│   ├── docs.go                   # Swagger-генерация (swaggo)
+│   ├── swagger.json
+│   ├── swagger.yaml
 │   └── adr/
 │       ├── adr-001.md
 │       ├── adr-002.md
 │       └── adr-003.md
+├── web/                          # Frontend (React + TypeScript + Vite)
 ├── docker-compose.yaml           # app + db (postgres:16-alpine)
-├── Dockerfile                    # Многостадийная сборка: builder → alpine
+├── Dockerfile                    # Многостадийная сборка: builder → alpine (non-root)
 ├── sqlc.yaml                     # Конфигурация sqlc v2
 ├── Makefile
 ├── go.mod / go.sum
@@ -99,12 +159,12 @@ HTTP Request → Handler → Service → Repository → sqlc → PostgreSQL
 | Слой | Файл | Ответственность |
 |------|------|-----------------|
 | **Handler** | `handler.go` | Декодинг JSON, вызов Service, формирование HTTP-ответа (201/200/204/ошибки) |
-| **Service** | `service.go` | Бизнес-логика, валидация, генерация токенов, хеширование |
+| **Service** | `service.go` | Бизнес-логика, валидация, генерация токенов, хеширование, транзакции |
 | **Repository** | `repository.go` | Обёртка над sqlc.Queries, скрытие pgtype-типов |
 
 **Правила:**
 - Handler и Service общаются через DTO (из `internal/server/dtos/`)
-- Repository возвращает `db.User` (sqlc-модель) — конвертация в DTO происходит в Service/Handler
+- Repository возвращает sqlc-модели (напр. `db.User`) — конвертация в DTO происходит в Service/Handler
 - Service не импортирует `net/http`
 - Handler не импортирует `database/sqlc` напрямую
 
@@ -114,15 +174,15 @@ HTTP Request → Handler → Service → Repository → sqlc → PostgreSQL
 
 ```go
 func (s *Server) registerAuthRoutes(r chi.Router) {
-    queries := db.New(s.db)          // sqlc-конструктор
+    queries := db.New(s.db)
     repo := auth.NewAuthRepository(queries)
     svc := auth.NewAuthService(repo, s.cfg)
     handler := auth.NewAuthHandler(svc)
 
-    r.Post("/auth/register", handler.Register)                    // без JWT
+    r.Post("/auth/register", handler.Register)
     r.Post("/auth/login", handler.Login)
     r.Post("/auth/refresh", handler.Refresh)
-    r.With(mw.JWTAuth(s.cfg)).Post("/auth/logout", handler.Logout) // с JWT
+    r.With(mw.JWTAuth(s.cfg)).Post("/auth/logout", handler.Logout)
 }
 ```
 
@@ -131,54 +191,217 @@ Middleware применяется **к конкретному эндпоинту
 ## Middleware (порядок применения)
 
 1. `RequestID` — генерация уникального ID запроса
-2. `RealIP` — определение реального IP
+2. `RealIP` — определение реального IP (X-Forwarded-For → X-Real-IP → RemoteAddr)
 3. `Logger` — логирование запросов/ответов (slog)
 4. `Recoverer` — перехват паник
 5. `CORS` — разрешение кросс-доменных запросов
-6. `JWTAuth` — проверка JWT (только на защищённые роуты)
-7. `RoleGuard` — проверка роли (только на роуты с ролевой моделью)
+6. `RateLimit` — rate limiting по IP (token bucket, настраивается per-endpoint)
+7. `JWTAuth` — проверка JWT (только на защищённые роуты)
+8. `RoleGuard` — проверка роли (только на роуты с ролевой моделью)
 
 ## Аутентификация (Auth Module)
 
 ### Поток регистрации
-1. Handler принимает `{email, password, username}`
+1. Handler принимает `{email, password, username, role}`
 2. Service проверяет длину пароля (≥ 8 символов)
 3. Хеширует пароль bcrypt (cost=12)
-4. Создаёт пользователя через Repository (role= buyer)
+4. Создаёт пользователя через Repository (role=buyer, поле role из запроса игнорируется)
 5. Генерирует access + refresh JWT
 6. Сохраняет refresh-токен в БД
-7. Возвращает `{user, access_token, refresh_token}`
+7. Возвращает `{user, access_token}` + устанавливает refresh в httpOnly cookie
 
 ### Поток логина
 1. Handler принимает `{email, password}`
 2. Service ищет пользователя по email
 3. Сравнивает пароль через bcrypt
 4. Генерирует токены, сохраняет refresh
-5. Возвращает `{user, access_token, refresh_token}`
+5. Возвращает `{user, access_token}` + устанавливает refresh в httpOnly cookie
 
 ### Поток refresh (ротация)
-1. Handler принимает `{refresh_token}`
+1. Handler читает refresh-токен из cookie `refresh_token`
 2. Service ищет токен в БД
 3. Проверяет срок годности (`expires_at`)
 4. Если истёк — удаляет и возвращает ошибку
 5. Получает пользователя по user_id из токена
 6. Удаляет старый refresh-токен
 7. Создаёт новый refresh-токен
-8. Возвращает новую пару токенов
+8. Возвращает `{access_token}` + устанавливает новый refresh в cookie
 
 ### Поток logout
 1. Middleware JWTAuth проверяет access-токен, извлекает user_id
 2. Handler получает user_id из контекста (`mw.UserIDFromCtx`)
 3. Service удаляет **все** refresh-токены пользователя (завершение всех сессий)
+4. Очищает cookie
 
 ### JWT токены
 
 | Параметр | Access Token | Refresh Token |
 |----------|-------------|---------------|
 | Срок жизни | 15 минут | 7 дней |
-| Хранение | В памяти клиента | В БД + у клиента |
+| Хранение | В памяти клиента (JSON-ответ) | В БД + httpOnly cookie |
 | Подпись | HS256 | HS256 |
 | Payload | `user_id`, `role`, `exp`, `iat` | `user_id`, `role`, `exp`, `iat` |
+
+### Cookie для refresh token
+
+| Параметр | Значение |
+|----------|----------|
+| `Name` | `refresh_token` |
+| `HttpOnly` | `true` |
+| `SameSite` | `Strict` |
+| `Path` | `/` |
+| `MaxAge` | 7 дней (168h) |
+
+## Модуль Orders
+
+### Создание заказа
+1. `user_id` берётся из JWT (если авторизован) или `null` (гостевой заказ)
+2. Валидация: минимум 1 элемент, `quantity > 0`, `delivery.address` — обязательное; для гостей — `customer.first_name/email/phone` обязательные
+3. В транзакции:
+   - Для каждого товара: `DecrementProductStock` (атомарно списывает остаток, проверяет `stock >= quantity`)
+   - Если товар не найден → `ErrProductNotFound` (404)
+   - Если остаток недостаточен → `ErrInsufficientStock` (400)
+   - Расчёт суммы: `price × quantity` для каждого элемента, суммирование
+   - `delivery_cost` всегда 0 (сервер игнорирует клиентское значение — защита от подмены)
+   - Создание заказа + элементов заказа, `expires_at = now() + 24h`
+4. Возвращает детальную информацию о заказе
+5. Асинхронно (в goroutine с `context.Background()`) отправляет email-уведомления покупателю и продавцам
+
+> `POST /orders` не требует авторизации. Гостевые заказы получают `public_token` для доступа без JWT. Авторизованные заказы привязываются к `user_id` из токена.
+
+### Автоматическая отмена просроченных заказов
+- `OrderExpirer` — фоновый процесс (тикер 5 минут), запускается в `main.go`
+- Находит заказы в статусе `pending` с `expires_at < now()`
+- В одной транзакции: переводит в `cancelled` и возвращает остатки товаров через `IncrementProductStock`
+
+### Статус-машина заказов
+
+```
+pending ──(webhook)──► paid ──(seller)──► shipped ──(seller)──► delivered
+   │                      │
+   └──(buyer/seller)──►   └──(buyer/seller)──► cancelled
+```
+
+- `pending → paid`: только через платёжный webhook
+- `pending → cancelled`: покупатель или продавец
+- `paid → shipped`: продавец
+- `paid → cancelled`: покупатель или продавец
+- `shipped → delivered`: продавец
+
+### Доступ к заказам
+- `GET /orders/me/{id}` — покупатель (владелец) или продавец (товары которого в заказе)
+- `GET /orders/me` — только покупатель (свои заказы)
+- `GET /orders/seller` — только продавец (заказы с его товарами)
+- `GET /orders/public/{public_token}` — любой (по токену гостевого заказа)
+- `GET /admin/orders*` — только админ
+
+## Модуль Seller Applications
+
+### Поток подачи заявки
+1. Пользователь (buyer) отправляет `POST /seller-applications` с названием магазина
+2. Проверка: нет существующей pending-заявки
+3. Создаётся заявка со статусом `pending`
+4. Асинхронно отправляется email админу о новой заявке
+
+### Поток одобрения
+1. Админ отправляет `PATCH /admin/seller-applications/{id}` со статусом `approved`
+2. В одной транзакции (`CreateStoreWithRole`):
+   - Создаётся запись в `stores`
+   - Пользователь получает роль `seller`
+3. Асинхронно отправляется email пользователю об одобрении
+
+### Поток отклонения
+1. Админ отправляет `PATCH /admin/seller-applications/{id}` со статусом `rejected` и `reason`
+2. Заявка переводится в `rejected`
+3. Асинхронно отправляется email пользователю с причиной отклонения
+
+> Магазин создаётся **только** через одобрение заявки. Прямой эндпоинт `POST /users/me/store` удалён — это защита от обхода модерации.
+
+## S3/MinIO хранилище
+
+Изображения товаров хранятся в S3-совместимом хранилище (MinIO в Docker, или AWS S3 в production).
+
+### Архитектура
+
+```
+┌─────────────────┐     PUT     ┌──────────────┐
+│  Frontend/Client │ ────────── │  S3/MinIO    │
+│  (presigned URL) │            │  (bucket)    │
+└─────────────────┘            └──────────────┘
+         ▲                               ▲
+         │  GET (presigned)              │
+         │                               │
+┌────────┴─────────┐            ┌────────▼──────┐
+│  Backend (Go)    │            │  product_images│
+│  - ImageHandler  │───────────│  .url = object │
+│  - ImageService  │  DB save │  .object_key    │
+└──────────────────┘            └───────────────┘
+```
+
+### Поток загрузки изображения
+
+**Вариант 1 — через бэкенд (multipart/form-data):**
+1. Клиент отправляет `POST /products/{id}/images` с файлом
+2. Backend валидирует тип (jpeg/png/webp/gif/svg), размер (≤10 МБ)
+3. `ImageUploadService.UploadImage` загружает файл в S3
+4. Сохраняет запись в `product_images` (`url` = object key, `object_key` = S3 key)
+5. Возвращает `{id, url, position}`
+
+**Вариант 2 — прямая загрузка (presigned URL):**
+1. Клиент запрашивает `GET /products/{id}/images/presigned?content_type=image/jpeg`
+2. Backend генерирует presigned URL через `s3.PresignedPutObject`
+3. Клиент делает `PUT <presigned_url>` с телом файла напрямую в S3
+4. После успешной загрузки клиент вызывает `POST /products/{id}/images` с `url` = object key
+
+### Конфигурация
+
+| Переменная | По умолчанию | Описание |
+|------------|--------------|----------|
+| `S3_ENDPOINT` | — | URL MinIO/S3 (напр. `http://localhost:9000`) |
+| `S3_REGION` | — | Регион (напр. `us-east-1`) |
+| `S3_ACCESS_KEY` | — | Access key |
+| `S3_SECRET_KEY` | — | Secret key |
+| `S3_BUCKET` | — | Имя бакета |
+
+> Если `S3_ENDPOINT` не задан — эндпоинты загрузки изображений не регистрируются.
+
+### Docker Compose
+
+Сервис `minio` запускается вместе с приложением:
+
+```yaml
+minio:
+  image: minio/minio:latest
+  ports: ["9000:9000", "9001:9001"]
+  environment:
+    MINIO_ROOT_USER: minioadmin
+    MINIO_ROOT_PASSWORD: minioadmin
+  command: server /data --console-address ":9001"
+```
+
+## Модуль Payments
+
+### Создание платежа (авторизованный)
+1. Проверка: заказ существует, принадлежит пользователю
+2. Проверка: заказ в статусе `pending`
+3. Проверка: платёж для заказа ещё не создан (UNIQUE constraint)
+4. Создание платежа со статусом `pending`, provider=`mock`
+5. Возвращает `confirmation_url` для редиректа на платёжную страницу
+
+### Создание гостевого платежа
+1. По `public_token` находится гостевой заказ
+2. Те же проверки (статус `pending`, нет существующего платежа)
+3. Создание платежа, возврат `confirmation_url`
+
+### Webhook
+1. Принимает `{order_id, provider_payment_id, status}`
+2. Допустимые статусы: `succeeded`, `failed`, `refunded`
+3. При `succeeded`: обновляет платёж, переводит заказ в `paid`
+4. Асинхронно (в goroutine с `context.Background()`): отправляет email-чек и уведомление о смене статуса
+
+### Возврат
+1. Проверка: платёж в статусе `succeeded`
+2. Обновление статуса на `refunded`
 
 ## Обработка ошибок
 
@@ -217,10 +440,15 @@ httputil.InternalError(w, "error details")          // 500 (логирует д�
 | `JWT_SECRET` | **обязателен** | Секрет для подписи JWT |
 | `JWT_ACCESS_TTL` | `15m` | Время жизни access token |
 | `JWT_REFRESH_TTL` | `168h` | Время жизни refresh token (7 дней) |
-| `PAYMENT_GATEWAY_URL` | — | URL платёжного шлюза |
-| `PAYMENT_GATEWAY_KEY` | — | API-ключ платёжного шлюза |
-| `REDIS_HOST` | `localhost` | Хост Redis |
-| `REDIS_PORT` | `6379` | Порт Redis |
+| `S3_ENDPOINT` | — | URL S3/MinIO (напр. `http://localhost:9000`) |
+| `S3_REGION` | — | Регион S3 |
+| `S3_ACCESS_KEY` | — | Access key |
+| `S3_SECRET_KEY` | — | Secret key |
+| `S3_BUCKET` | — | Имя бакета |
+| `PAYMENT_GATEWAY_URL` | — | URL платёжного шлюза (планируется) |
+| `PAYMENT_GATEWAY_KEY` | — | API-ключ платёжного шлюза (планируется) |
+| `REDIS_HOST` | `localhost` | Хост Redis (планируется) |
+| `REDIS_PORT` | `6379` | Порт Redis (планируется) |
 
 ## sqlc
 
@@ -241,7 +469,7 @@ sqlc generate
 - Nullable поля → `pgtype.Text` (не `*string`, не `NullText`)
 - Enums → Go-типы (напр. `UserRoleBuyer`, `UserRoleSeller`, `UserRoleAdmin`)
 
-## Развёртывание
+## Развёртывание (Docker)
 
 ```bash
 # Первый запуск
@@ -255,16 +483,27 @@ docker compose logs -f app
 
 # Остановка
 docker compose down
+
+# Полный сброс (с удалением данных)
+docker compose down -v && docker compose up -d --build
 ```
 
-Docker Compose:
+### Docker Compose
 
-| Сервис | Образ | Назначение |
-|--------|-------|------------|
-| `app` | Сборка из Dockerfile (многостадийная) | Backend (Go) |
-| `db` | `postgres:16-alpine` | База данных |
+| Сервис | Образ | Назначение | Healthcheck |
+|--------|-------|------------|-------------|
+| `app` | Сборка из Dockerfile (многостадийная, non-root) | Backend (Go) | `wget /health` |
+| `db` | `postgres:16-alpine` | База данных | `pg_isready` |
 
-Приложение подключается к БД через имя сервиса `db` (не `localhost`).
+### Dockerfile (best practices)
+
+- **Многостадийная сборка:** `golang:1.26-alpine` → `alpine:3.21`
+- **Non-root user:** `appuser` (создаётся в финальном образе)
+- **`-ldflags="-s -w"`:** уменьшение размера бинарника
+- **`CGO_ENABLED=0`:** статическая сборка
+- **`ca-certificates`:** для HTTPS-запросов
+- **HEALTHCHECK:** проверка `/health` каждые 10с
+- Приложение подключается к БД через имя сервиса `db` (не `localhost`)
 
 ## Будущее масштабирование
 

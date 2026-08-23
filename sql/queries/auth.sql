@@ -43,3 +43,30 @@ RETURNING id, user_id, token, expires_at, created_at;
 -- name: DeleteUserRefreshTokens :exec
 DELETE FROM refresh_tokens
 WHERE user_id = $1;
+
+-- name: GenerateResetToken :one
+UPDATE users
+SET reset_token = $2,
+    reset_token_expires_at = $3
+WHERE id = $1
+RETURNING id, email, password_hash, role, username, avatar_url, phone, created_at, updated_at;
+
+-- name: GetUserByResetToken :one
+SELECT id, email, password_hash, role, username, avatar_url, phone, created_at, updated_at
+FROM users
+WHERE reset_token = $1
+    AND reset_token_expires_at > now();
+
+-- name: ResetPassword :one 
+UPDATE users
+SET password_hash = $2,
+    reset_token = NULL,
+    reset_token_expires_at = NULL
+WHERE id = $1
+RETURNING id, email, password_hash, role, username, avatar_url, phone, created_at, updated_at;
+
+-- name: DeleteResetToken :exec
+UPDATE users
+SET reset_token = NULL,
+    reset_token_expires_at = NULL
+WHERE id = $1;

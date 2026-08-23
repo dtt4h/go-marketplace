@@ -3,21 +3,21 @@ package logger
 import (
 	"log/slog"
 	"os"
-	"strings"
 )
 
 func New(env string) *slog.Logger {
 	var handler slog.Handler
 
-	if strings.EqualFold(env, "production") {
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
-		})
-	} else {
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		})
+	level := slog.LevelInfo
+	if env == "development" {
+		level = slog.LevelDebug
 	}
+
+	// Always use JSON handler for structured logging
+	// This works well with log rotation, Docker logging, and log aggregators
+	handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	})
 
 	log := slog.New(handler)
 	slog.SetDefault(log)

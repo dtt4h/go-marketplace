@@ -1,0 +1,47 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+vendor/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+pgdata/
+redisdata/
+minio_data/
+backups/
+
+# Frontend
+web/node_modules/
+web/dist/
+
+# Git
+.git/
+.gitignore
+
+# Documentation sources that are not needed for the application build
+docs/adr/
+docs/grafana/
+*.md
+
+# SQL migrations must remain in the build context: they are embedded in the
+# application binary at compile time via go:embed.

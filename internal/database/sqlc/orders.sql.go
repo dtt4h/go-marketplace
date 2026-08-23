@@ -11,20 +11,109 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countOrderItems = `-- name: CountOrderItems :one
+SELECT COUNT(*) FROM order_items WHERE order_id = $1
+`
+
+func (q *Queries) CountOrderItems(ctx context.Context, orderID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrderItems, orderID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOrders = `-- name: CountOrders :one
+SELECT COUNT(*) FROM orders
+`
+
+func (q *Queries) CountOrders(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrders)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countSellers = `-- name: CountSellers :one
+SELECT COUNT(*) FROM users WHERE role = 'seller'
+`
+
+func (q *Queries) CountSellers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countSellers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOrdersByStatus = `-- name: CountOrdersByStatus :one
+SELECT COUNT(*) FROM orders WHERE status = $1
+`
+
+func (q *Queries) CountOrdersByStatus(ctx context.Context, status OrderStatus) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrdersByStatus, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countProducts = `-- name: CountProducts :one
+SELECT COUNT(*) FROM products
+`
+
+func (q *Queries) CountProducts(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countProducts)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createOrder = `-- name: CreateOrder :one
-INSERT INTO orders (user_id, status, total, address)
-VALUES ($1, 'pending', $2, $3)
-RETURNING id, user_id, status, total, address, created_at, updated_at
+INSERT INTO orders (
+    user_id, status, total, address,
+    public_token, customer_first_name, customer_last_name,
+    customer_email, customer_phone, delivery_method, delivery_cost,
+    expires_at
+)
+VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10, now() + INTERVAL '24 hours')
+RETURNING *
 `
 
 type CreateOrderParams struct {
-	UserID  int64          `json:"userId"`
-	Total   pgtype.Numeric `json:"total"`
-	Address string         `json:"address"`
+	UserID            pgtype.Int8    `json:"userId"`
+	Total             pgtype.Numeric `json:"total"`
+	Address           string         `json:"address"`
+	PublicToken       pgtype.Text    `json:"publicToken"`
+	CustomerFirstName pgtype.Text    `json:"customerFirstName"`
+	CustomerLastName  pgtype.Text    `json:"customerLastName"`
+	CustomerEmail     pgtype.Text    `json:"customerEmail"`
+	CustomerPhone     pgtype.Text    `json:"customerPhone"`
+	DeliveryMethod    pgtype.Text    `json:"deliveryMethod"`
+	DeliveryCost      pgtype.Numeric `json:"deliveryCost"`
 }
 
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
-	row := q.db.QueryRow(ctx, createOrder, arg.UserID, arg.Total, arg.Address)
+	row := q.db.QueryRow(ctx, createOrder,
+		arg.UserID,
+		arg.Total,
+		arg.Address,
+		arg.PublicToken,
+		arg.CustomerFirstName,
+		arg.CustomerLastName,
+		arg.CustomerEmail,
+		arg.CustomerPhone,
+		arg.DeliveryMethod,
+		arg.DeliveryCost,
+	)
 	var i Order
 	err := row.Scan(
 		&i.ID,
@@ -34,6 +123,15 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.Address,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublicToken,
+		&i.CustomerFirstName,
+		&i.CustomerLastName,
+		&i.CustomerEmail,
+		&i.CustomerPhone,
+		&i.DeliveryMethod,
+		&i.DeliveryCost,
+		&i.TrackingNumber,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
@@ -41,7 +139,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 const createOrderItem = `-- name: CreateOrderItem :one
 INSERT INTO order_items (order_id, product_id, quantity, price)
 VALUES ($1, $2, $3, $4)
-RETURNING id, order_id, product_id, quantity, price
+RETURNING *
 `
 
 type CreateOrderItemParams struct {
@@ -102,10 +200,36 @@ func (q *Queries) DecrementProductStock(ctx context.Context, arg DecrementProduc
 	return i, err
 }
 
+const expirePendingOrders = `-- name: ExpirePendingOrders :many
+UPDATE orders
+SET status = 'cancelled'
+WHERE status = 'pending'
+  AND expires_at < now()
+RETURNING id
+`
+
+func (q *Queries) ExpirePendingOrders(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.Query(ctx, expirePendingOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var i int64
+		if err := rows.Scan(&i); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrder = `-- name: GetOrder :one
-SELECT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at
-FROM orders o
-WHERE o.id = $1
+SELECT id, user_id, status, total, address, created_at, updated_at, public_token, customer_first_name, customer_last_name, customer_email, customer_phone, delivery_method, delivery_cost, tracking_number, expires_at FROM orders WHERE id = $1
 `
 
 func (q *Queries) GetOrder(ctx context.Context, id int64) (Order, error) {
@@ -119,6 +243,43 @@ func (q *Queries) GetOrder(ctx context.Context, id int64) (Order, error) {
 		&i.Address,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublicToken,
+		&i.CustomerFirstName,
+		&i.CustomerLastName,
+		&i.CustomerEmail,
+		&i.CustomerPhone,
+		&i.DeliveryMethod,
+		&i.DeliveryCost,
+		&i.TrackingNumber,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const getOrderByPublicToken = `-- name: GetOrderByPublicToken :one
+SELECT id, user_id, status, total, address, created_at, updated_at, public_token, customer_first_name, customer_last_name, customer_email, customer_phone, delivery_method, delivery_cost, tracking_number, expires_at FROM orders WHERE public_token = $1
+`
+
+func (q *Queries) GetOrderByPublicToken(ctx context.Context, publicToken pgtype.Text) (Order, error) {
+	row := q.db.QueryRow(ctx, getOrderByPublicToken, publicToken)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.Total,
+		&i.Address,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublicToken,
+		&i.CustomerFirstName,
+		&i.CustomerLastName,
+		&i.CustomerEmail,
+		&i.CustomerPhone,
+		&i.DeliveryMethod,
+		&i.DeliveryCost,
+		&i.TrackingNumber,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
@@ -169,66 +330,262 @@ func (q *Queries) GetOrderItems(ctx context.Context, orderID int64) ([]GetOrderI
 	return items, nil
 }
 
-const getOrderWithItems = `-- name: GetOrderWithItems :one
-SELECT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at,
-       oi.id AS item_id, oi.product_id, oi.quantity, oi.price,
-       p.title AS product_title, p.store_id
-FROM orders o
-JOIN order_items oi ON oi.order_id = o.id
-JOIN products p ON p.id = oi.product_id
-WHERE o.id = $1
+const getOrderItemsByOrderID = `-- name: GetOrderItemsByOrderID :many
+SELECT product_id, quantity FROM order_items WHERE order_id = $1
 `
 
-type GetOrderWithItemsRow struct {
-	ID           int64              `json:"id"`
-	UserID       int64              `json:"userId"`
-	Status       OrderStatus        `json:"status"`
-	Total        pgtype.Numeric     `json:"total"`
-	Address      string             `json:"address"`
-	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
-	ItemID       int64              `json:"itemId"`
-	ProductID    int64              `json:"productId"`
-	Quantity     int32              `json:"quantity"`
-	Price        pgtype.Numeric     `json:"price"`
-	ProductTitle string             `json:"productTitle"`
-	StoreID      int64              `json:"storeId"`
+func (q *Queries) GetOrderItemsByOrderID(ctx context.Context, orderID int64) ([]GetOrderItemsByOrderIDRow, error) {
+	rows, err := q.db.Query(ctx, getOrderItemsByOrderID, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOrderItemsByOrderIDRow
+	for rows.Next() {
+		var i GetOrderItemsByOrderIDRow
+		if err := rows.Scan(&i.ProductID, &i.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) GetOrderWithItems(ctx context.Context, id int64) (GetOrderWithItemsRow, error) {
-	row := q.db.QueryRow(ctx, getOrderWithItems, id)
-	var i GetOrderWithItemsRow
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Status,
-		&i.Total,
-		&i.Address,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.ItemID,
-		&i.ProductID,
-		&i.Quantity,
-		&i.Price,
-		&i.ProductTitle,
-		&i.StoreID,
-	)
-	return i, err
+type GetOrderItemsByOrderIDRow struct {
+	ProductID int64 `json:"productId"`
+	Quantity  int32 `json:"quantity"`
 }
 
 const getProductStoreID = `-- name: GetProductStoreID :one
 SELECT store_id FROM products WHERE id = $1
 `
 
-func (q *Queries) GetProductStoreID(ctx context.Context, id int64) (int64, error) {
-	row := q.db.QueryRow(ctx, getProductStoreID, id)
-	var store_id int64
-	err := row.Scan(&store_id)
-	return store_id, err
+func (q *Queries) GetProductStoreID(ctx context.Context, productID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getProductStoreID, productID)
+	var storeID int64
+	err := row.Scan(&storeID)
+	return storeID, err
+}
+
+const incrementProductStock = `-- name: IncrementProductStock :one
+UPDATE products
+SET stock = stock + $2
+WHERE id = $1
+RETURNING id, store_id, title, price, stock
+`
+
+type IncrementProductStockParams struct {
+	ID    int64 `json:"id"`
+	Stock int32 `json:"stock"`
+}
+
+type IncrementProductStockRow struct {
+	ID      int64          `json:"id"`
+	StoreID int64          `json:"storeId"`
+	Title   string         `json:"title"`
+	Price   pgtype.Numeric `json:"price"`
+	Stock   int32          `json:"stock"`
+}
+
+func (q *Queries) IncrementProductStock(ctx context.Context, arg IncrementProductStockParams) (IncrementProductStockRow, error) {
+	row := q.db.QueryRow(ctx, incrementProductStock, arg.ID, arg.Stock)
+	var i IncrementProductStockRow
+	err := row.Scan(
+		&i.ID,
+		&i.StoreID,
+		&i.Title,
+		&i.Price,
+		&i.Stock,
+	)
+	return i, err
+}
+
+const listAllOrders = `-- name: ListAllOrders :many
+SELECT id, user_id, status, total, address, created_at, updated_at, public_token, customer_first_name, customer_last_name, customer_email, customer_phone, delivery_method, delivery_cost, tracking_number, expires_at FROM orders
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListAllOrdersParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListAllOrders(ctx context.Context, arg ListAllOrdersParams) ([]Order, error) {
+	rows, err := q.db.Query(ctx, listAllOrders, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Status,
+			&i.Total,
+			&i.Address,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PublicToken,
+			&i.CustomerFirstName,
+			&i.CustomerLastName,
+			&i.CustomerEmail,
+			&i.CustomerPhone,
+			&i.DeliveryMethod,
+			&i.DeliveryCost,
+			&i.TrackingNumber,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllOrdersByStatus = `-- name: ListAllOrdersByStatus :many
+SELECT id, user_id, status, total, address, created_at, updated_at, public_token, customer_first_name, customer_last_name, customer_email, customer_phone, delivery_method, delivery_cost, tracking_number, expires_at FROM orders
+WHERE status = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListAllOrdersByStatusParams struct {
+	Status OrderStatus `json:"status"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
+}
+
+func (q *Queries) ListAllOrdersByStatus(ctx context.Context, arg ListAllOrdersByStatusParams) ([]Order, error) {
+	rows, err := q.db.Query(ctx, listAllOrdersByStatus, arg.Status, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Status,
+			&i.Total,
+			&i.Address,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PublicToken,
+			&i.CustomerFirstName,
+			&i.CustomerLastName,
+			&i.CustomerEmail,
+			&i.CustomerPhone,
+			&i.DeliveryMethod,
+			&i.DeliveryCost,
+			&i.TrackingNumber,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllOrdersByStatusCount = `-- name: ListAllOrdersByStatusCount :one
+SELECT COUNT(*) FROM orders WHERE status = $1
+`
+
+func (q *Queries) ListAllOrdersByStatusCount(ctx context.Context, status OrderStatus) (int64, error) {
+	row := q.db.QueryRow(ctx, listAllOrdersByStatusCount, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const listAllOrdersByUser = `-- name: ListAllOrdersByUser :many
+SELECT id, user_id, status, total, address, created_at, updated_at, public_token, customer_first_name, customer_last_name, customer_email, customer_phone, delivery_method, delivery_cost, tracking_number, expires_at FROM orders
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListAllOrdersByUserParams struct {
+	UserID pgtype.Int8 `json:"userId"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
+}
+
+func (q *Queries) ListAllOrdersByUser(ctx context.Context, arg ListAllOrdersByUserParams) ([]Order, error) {
+	rows, err := q.db.Query(ctx, listAllOrdersByUser, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Status,
+			&i.Total,
+			&i.Address,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PublicToken,
+			&i.CustomerFirstName,
+			&i.CustomerLastName,
+			&i.CustomerEmail,
+			&i.CustomerPhone,
+			&i.DeliveryMethod,
+			&i.DeliveryCost,
+			&i.TrackingNumber,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllOrdersByUserCount = `-- name: ListAllOrdersByUserCount :one
+SELECT COUNT(*) FROM orders WHERE user_id = $1
+`
+
+func (q *Queries) ListAllOrdersByUserCount(ctx context.Context, userID pgtype.Int8) (int64, error) {
+	row := q.db.QueryRow(ctx, listAllOrdersByUserCount, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const listAllOrdersCount = `-- name: ListAllOrdersCount :one
+SELECT COUNT(*) FROM orders
+`
+
+func (q *Queries) ListAllOrdersCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, listAllOrdersCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const listOrdersBySeller = `-- name: ListOrdersBySeller :many
-SELECT DISTINCT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at
+SELECT DISTINCT o.*
 FROM orders o
 JOIN order_items oi ON oi.order_id = o.id
 JOIN products p ON p.id = oi.product_id
@@ -261,6 +618,15 @@ func (q *Queries) ListOrdersBySeller(ctx context.Context, arg ListOrdersBySeller
 			&i.Address,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PublicToken,
+			&i.CustomerFirstName,
+			&i.CustomerLastName,
+			&i.CustomerEmail,
+			&i.CustomerPhone,
+			&i.DeliveryMethod,
+			&i.DeliveryCost,
+			&i.TrackingNumber,
+			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -289,17 +655,16 @@ func (q *Queries) ListOrdersBySellerCount(ctx context.Context, userID int64) (in
 }
 
 const listOrdersByUser = `-- name: ListOrdersByUser :many
-SELECT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at
-FROM orders o
-WHERE o.user_id = $1
-ORDER BY o.created_at DESC
+SELECT id, user_id, status, total, address, created_at, updated_at, public_token, customer_first_name, customer_last_name, customer_email, customer_phone, delivery_method, delivery_cost, tracking_number, expires_at FROM orders
+WHERE user_id = $1
+ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
 `
 
 type ListOrdersByUserParams struct {
-	UserID int64 `json:"userId"`
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	UserID pgtype.Int8 `json:"userId"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
 }
 
 func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserParams) ([]Order, error) {
@@ -319,6 +684,15 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 			&i.Address,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PublicToken,
+			&i.CustomerFirstName,
+			&i.CustomerLastName,
+			&i.CustomerEmail,
+			&i.CustomerPhone,
+			&i.DeliveryMethod,
+			&i.DeliveryCost,
+			&i.TrackingNumber,
+			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -331,24 +705,32 @@ func (q *Queries) ListOrdersByUser(ctx context.Context, arg ListOrdersByUserPara
 }
 
 const listOrdersByUserCount = `-- name: ListOrdersByUserCount :one
-SELECT COUNT(*)
-FROM orders o
-WHERE o.user_id = $1
+SELECT COUNT(*) FROM orders WHERE user_id = $1
 `
 
-func (q *Queries) ListOrdersByUserCount(ctx context.Context, userID int64) (int64, error) {
+func (q *Queries) ListOrdersByUserCount(ctx context.Context, userID pgtype.Int8) (int64, error) {
 	row := q.db.QueryRow(ctx, listOrdersByUserCount, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
+const sumOrderTotals = `-- name: SumOrderTotals :one
+SELECT COALESCE(SUM(total), 0) FROM orders WHERE status != 'cancelled'
+`
+
+func (q *Queries) SumOrderTotals(ctx context.Context) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, sumOrderTotals)
+	var total pgtype.Numeric
+	err := row.Scan(&total)
+	return total, err
+}
+
 const updateOrderStatus = `-- name: UpdateOrderStatus :one
 UPDATE orders
-SET status = $2,
-    updated_at = now()
+SET status = $2, updated_at = now()
 WHERE id = $1
-RETURNING id, user_id, status, total, address, created_at, updated_at
+RETURNING *
 `
 
 type UpdateOrderStatusParams struct {
@@ -367,6 +749,51 @@ func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusPa
 		&i.Address,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublicToken,
+		&i.CustomerFirstName,
+		&i.CustomerLastName,
+		&i.CustomerEmail,
+		&i.CustomerPhone,
+		&i.DeliveryMethod,
+		&i.DeliveryCost,
+		&i.TrackingNumber,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const updateOrderTracking = `-- name: UpdateOrderTracking :one
+UPDATE orders
+SET tracking_number = $2, updated_at = now()
+WHERE id = $1
+RETURNING *
+`
+
+type UpdateOrderTrackingParams struct {
+	ID             int64       `json:"id"`
+	TrackingNumber pgtype.Text `json:"trackingNumber"`
+}
+
+func (q *Queries) UpdateOrderTracking(ctx context.Context, arg UpdateOrderTrackingParams) (Order, error) {
+	row := q.db.QueryRow(ctx, updateOrderTracking, arg.ID, arg.TrackingNumber)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.Total,
+		&i.Address,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublicToken,
+		&i.CustomerFirstName,
+		&i.CustomerLastName,
+		&i.CustomerEmail,
+		&i.CustomerPhone,
+		&i.DeliveryMethod,
+		&i.DeliveryCost,
+		&i.TrackingNumber,
+		&i.ExpiresAt,
 	)
 	return i, err
 }

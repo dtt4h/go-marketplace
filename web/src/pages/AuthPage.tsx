@@ -1,23 +1,20 @@
-import { LoginForm } from '../components/LoginForm'
-import { LogoutButton } from '../components/LogoutButton'
-import { useAuthStore } from '../store/authStore'
-import { RegisterForm } from '../components/RegisterForm'
+import { LoginForm } from '../features/auth/components/LoginForm'
+
+import cls from './AuthPage.module.scss'
 
 export function AuthPage() {
-  const user = useAuthStore((state) => state.user)
-
-  if (user) {
-    return (
-      <main>
-        <p>Вы вошли как {user.username}</p>
-        <LogoutButton />
-      </main>
-    )
-  }
   return (
-    <main>
-      <LoginForm />
-      <RegisterForm />
+    <main className={cls.authWrapper}>
+      <div className={cls.logoContainer}>
+        <p className={cls.logoText}>T</p>
+      </div>
+      <div className={cls.welcomeContainer}>
+        <h1 className={cls.welcomeText}>Добро пожаловать в «Тарелку»</h1>
+        <p className={cls.welcomeDesc}>Вход для продавцов</p>
+      </div>
+      <section className={cls.sectionContainer}>
+        <LoginForm />
+      </section>
     </main>
   )
 }

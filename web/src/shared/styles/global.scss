@@ -1,0 +1,37 @@
+$inter: 'Inter', sans-serif;
+
+@font-face {
+  font-family: 'Inter';
+  src: url('../assets/fonts/InterVariable.woff2')
+    format('woff2-variations');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+$grey46: #6C757D;
+$grey91: #E3E8EF;
+$grey95: #EAF1FB;
+$grey953: #EEF1F5;
+$grey462: #757575;
+
+$azure12: #0B1F33;
+$azure16: #1F2933;
+$azure27: #334155;
+$azure35: #475569;
+$azure52: #0D6EFD;
+$azure58: #7F93A8;
+$azure64: #8EA3BA;
+$azure65: #94A3B8;
+$azure66: #9AA8B8;
+$azure73: #A9BACD;
+$azure84: #CDD6E0;
+
+$danger: #DC3545;
+
+$red54: #E6492D;
+
+$green38: #198754;
+$green93: #E6F6ED;
+
+$azure98: #F5F9FF;

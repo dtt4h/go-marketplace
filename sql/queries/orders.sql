@@ -1,41 +1,35 @@
 -- name: CreateOrder :one
-INSERT INTO orders (user_id, status, total, address)
-VALUES ($1, 'pending', $2, $3)
-RETURNING id, user_id, status, total, address, created_at, updated_at;
+INSERT INTO orders (
+    user_id, status, total, address,
+    public_token, customer_first_name, customer_last_name,
+    customer_email, customer_phone, delivery_method, delivery_cost,
+    expires_at
+)
+VALUES ($1, 'pending', $2, $3, $4, $5, $6, $7, $8, $9, $10, now() + INTERVAL '24 hours')
+RETURNING *;
 
 -- name: CreateOrderItem :one
 INSERT INTO order_items (order_id, product_id, quantity, price)
 VALUES ($1, $2, $3, $4)
-RETURNING id, order_id, product_id, quantity, price;
+RETURNING *;
 
 -- name: GetOrder :one
-SELECT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at
-FROM orders o
-WHERE o.id = $1;
+SELECT * FROM orders WHERE id = $1;
 
--- name: GetOrderWithItems :one
-SELECT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at,
-       oi.id AS item_id, oi.product_id, oi.quantity, oi.price,
-       p.title AS product_title, p.store_id
-FROM orders o
-JOIN order_items oi ON oi.order_id = o.id
-JOIN products p ON p.id = oi.product_id
-WHERE o.id = $1;
+-- name: GetOrderByPublicToken :one
+SELECT * FROM orders WHERE public_token = $1;
 
 -- name: ListOrdersByUser :many
-SELECT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at
-FROM orders o
-WHERE o.user_id = $1
-ORDER BY o.created_at DESC
+SELECT * FROM orders
+WHERE user_id = $1
+ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: ListOrdersByUserCount :one
-SELECT COUNT(*)
-FROM orders o
-WHERE o.user_id = $1;
+SELECT COUNT(*) FROM orders WHERE user_id = $1;
 
 -- name: ListOrdersBySeller :many
-SELECT DISTINCT o.id, o.user_id, o.status, o.total, o.address, o.created_at, o.updated_at
+SELECT DISTINCT o.*
 FROM orders o
 JOIN order_items oi ON oi.order_id = o.id
 JOIN products p ON p.id = oi.product_id
@@ -54,10 +48,15 @@ WHERE s.user_id = $1;
 
 -- name: UpdateOrderStatus :one
 UPDATE orders
-SET status = $2,
-    updated_at = now()
+SET status = $2, updated_at = now()
 WHERE id = $1
-RETURNING id, user_id, status, total, address, created_at, updated_at;
+RETURNING *;
+
+-- name: UpdateOrderTracking :one
+UPDATE orders
+SET tracking_number = $2, updated_at = now()
+WHERE id = $1
+RETURNING *;
 
 -- name: GetOrderItems :many
 SELECT oi.id, oi.order_id, oi.product_id, oi.quantity, oi.price,
@@ -74,3 +73,70 @@ RETURNING id, store_id, title, price, stock;
 
 -- name: GetProductStoreID :one
 SELECT store_id FROM products WHERE id = $1;
+
+-- name: CountOrderItems :one
+SELECT COUNT(*) FROM order_items WHERE order_id = $1;
+
+-- name: IncrementProductStock :one
+UPDATE products
+SET stock = stock + $2
+WHERE id = $1
+RETURNING id, store_id, title, price, stock;
+
+-- name: GetOrderItemsByOrderID :many
+SELECT product_id, quantity FROM order_items WHERE order_id = $1;
+
+-- name: ExpirePendingOrders :many
+UPDATE orders
+SET status = 'cancelled'
+WHERE status = 'pending'
+  AND expires_at < now()
+RETURNING id;
+
+-- Admin queries
+
+-- name: ListAllOrders :many
+SELECT * FROM orders
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: ListAllOrdersCount :one
+SELECT COUNT(*) FROM orders;
+
+-- name: ListAllOrdersByStatus :many
+SELECT * FROM orders
+WHERE status = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListAllOrdersByStatusCount :one
+SELECT COUNT(*) FROM orders WHERE status = $1;
+
+-- name: ListAllOrdersByUser :many
+SELECT * FROM orders
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListAllOrdersByUserCount :one
+SELECT COUNT(*) FROM orders WHERE user_id = $1;
+
+-- Admin statistics queries
+
+-- name: CountUsers :one
+SELECT COUNT(*) FROM users;
+
+-- name: CountSellers :one
+SELECT COUNT(*) FROM users WHERE role = 'seller';
+
+-- name: CountProducts :one
+SELECT COUNT(*) FROM products;
+
+-- name: CountOrders :one
+SELECT COUNT(*) FROM orders;
+
+-- name: CountOrdersByStatus :one
+SELECT COUNT(*) FROM orders WHERE status = $1;
+
+-- name: SumOrderTotals :one
+SELECT COALESCE(SUM(total), 0) FROM orders WHERE status != 'cancelled';

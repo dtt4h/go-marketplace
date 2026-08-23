@@ -1,0 +1,60 @@
+@use '../shared/styles/global.scss' as *;
+
+.wrapperCatalog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.cardsContainer {
+  display: grid;
+  grid-template-columns: repeat(4, 273px);
+  gap: 20px;
+}
+
+.emptyMessage,
+.stateMessage,
+.errorMessage {
+  padding: 40px 0;
+  font-family: $inter;
+  font-size: 16px;
+  color: $grey46;
+}
+
+.errorMessage {
+  color: $red54;
+}
+
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 40px 0;
+
+  .errorMessage {
+    padding: 0;
+  }
+}
+
+.paginationState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0;
+  font-family: $inter;
+  color: $grey46;
+
+  .errorMessage {
+    padding: 0;
+  }
+}
+
+.loadMoreTrigger {
+  width: 100%;
+  height: 1px;
+}

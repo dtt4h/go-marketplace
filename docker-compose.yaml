@@ -1,31 +1,182 @@
 services:
+  db:
+    image: postgres:16-alpine
+    # В продакшене не пробрасывай порт наружу — используй Docker network
+    # ports:
+    #   - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-marketplace}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    # В продакшене не пробрасывай порт наружу
+    # ports:
+    #   - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - backend
+
+  minio:
+    image: minio/minio:latest
+    # В продакшене используй реальный S3 (AWS, Yandex Object Storage и т.д.)
+    # ports:
+    #   - "9000:9000"
+    #   - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - backend
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${S3_ACCESS_KEY:-minioadmin} ${S3_SECRET_KEY:-minioadmin};
+      mc mb --ignore-existing local/${S3_BUCKET:-marketplace};
+      mc anonymous set public local/${S3_BUCKET:-marketplace};
+      exit 0;
+      "
+
   app:
     build: .
-    ports:
-      - "8080:8080"
+    # ports:
+    #   - "8080:8080"  # В продакшене за nginx
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     restart: unless-stopped
-
-  db:
-    image: postgres:16-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: marketplace
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+    stop_grace_period: 35s
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
       timeout: 5s
+      start_period: 10s
       retries: 5
+    networks:
+      - backend
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      app:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 3s
+      retries: 3
+    networks:
+      - backend
+      - frontend
+
+  # Одноразовый контейнер для ручного бэкапа БД:
+  #   docker compose run --rm db-backup
+  db-backup:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD:-postgres}
+      PGDATABASE: ${DB_NAME:-marketplace}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      /bin/sh -c "
+      ts=$(date +%Y%m%d_%H%M%S);
+      pg_dump -Fc -f /backups/marketplace_${ts}.dump;
+      echo \"Backup saved: /backups/marketplace_${ts}.dump\";
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - backup
+
+  # Автоматический бэкап БД по расписанию (cron)
+  # Запускается только с профилем production:
+  #   docker compose --profile production up -d
+  db-backup-cron:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD:-postgres}
+      PGDATABASE: ${DB_NAME:-marketplace}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      /bin/sh -c "
+      echo '0 3 * * * pg_dump -Fc -f /backups/marketplace_$(date +\%Y\%m\%d_\%H\%M\%S).dump && find /backups -name \"*.dump\" -mtime ${BACKUP_RETENTION_DAYS:-7} -delete' > /etc/crontabs/root &&
+      crond -f -l 2
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend
+    profiles:
+      - production
 
 volumes:
   pgdata:
+  redisdata:
+  minio_data:
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge

@@ -52,15 +52,27 @@ type CreateUserParams struct {
 	Username     string   `json:"username"`
 }
 
+type CreateUserRow struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"passwordHash"`
+	Role         UserRole           `json:"role"`
+	Username     string             `json:"username"`
+	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
+	Phone        pgtype.Text        `json:"phone"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+}
+
 // users
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Role,
 		arg.Username,
 	)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -94,6 +106,18 @@ func (q *Queries) DeleteRefreshToken(ctx context.Context, token string) (Refresh
 	return i, err
 }
 
+const deleteResetToken = `-- name: DeleteResetToken :exec
+UPDATE users
+SET reset_token = NULL,
+    reset_token_expires_at = NULL
+WHERE id = $1
+`
+
+func (q *Queries) DeleteResetToken(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteResetToken, id)
+	return err
+}
+
 const deleteUserRefreshTokens = `-- name: DeleteUserRefreshTokens :exec
 DELETE FROM refresh_tokens
 WHERE user_id = $1
@@ -102,6 +126,49 @@ WHERE user_id = $1
 func (q *Queries) DeleteUserRefreshTokens(ctx context.Context, userID int64) error {
 	_, err := q.db.Exec(ctx, deleteUserRefreshTokens, userID)
 	return err
+}
+
+const generateResetToken = `-- name: GenerateResetToken :one
+UPDATE users
+SET reset_token = $2,
+    reset_token_expires_at = $3
+WHERE id = $1
+RETURNING id, email, password_hash, role, username, avatar_url, phone, created_at, updated_at
+`
+
+type GenerateResetTokenParams struct {
+	ID                  int64              `json:"id"`
+	ResetToken          pgtype.Text        `json:"resetToken"`
+	ResetTokenExpiresAt pgtype.Timestamptz `json:"resetTokenExpiresAt"`
+}
+
+type GenerateResetTokenRow struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"passwordHash"`
+	Role         UserRole           `json:"role"`
+	Username     string             `json:"username"`
+	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
+	Phone        pgtype.Text        `json:"phone"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+}
+
+func (q *Queries) GenerateResetToken(ctx context.Context, arg GenerateResetTokenParams) (GenerateResetTokenRow, error) {
+	row := q.db.QueryRow(ctx, generateResetToken, arg.ID, arg.ResetToken, arg.ResetTokenExpiresAt)
+	var i GenerateResetTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.Phone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getRefreshToken = `-- name: GetRefreshToken :one
@@ -129,9 +196,21 @@ FROM users
 WHERE email = $1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+type GetUserByEmailRow struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"passwordHash"`
+	Role         UserRole           `json:"role"`
+	Username     string             `json:"username"`
+	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
+	Phone        pgtype.Text        `json:"phone"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
-	var i User
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -152,9 +231,100 @@ FROM users
 WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
+type GetUserByIDRow struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"passwordHash"`
+	Role         UserRole           `json:"role"`
+	Username     string             `json:"username"`
+	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
+	Phone        pgtype.Text        `json:"phone"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.Phone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByResetToken = `-- name: GetUserByResetToken :one
+SELECT id, email, password_hash, role, username, avatar_url, phone, created_at, updated_at
+FROM users
+WHERE reset_token = $1
+    AND reset_token_expires_at > now()
+`
+
+type GetUserByResetTokenRow struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"passwordHash"`
+	Role         UserRole           `json:"role"`
+	Username     string             `json:"username"`
+	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
+	Phone        pgtype.Text        `json:"phone"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+}
+
+func (q *Queries) GetUserByResetToken(ctx context.Context, resetToken pgtype.Text) (GetUserByResetTokenRow, error) {
+	row := q.db.QueryRow(ctx, getUserByResetToken, resetToken)
+	var i GetUserByResetTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.Phone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const resetPassword = `-- name: ResetPassword :one
+UPDATE users
+SET password_hash = $2,
+    reset_token = NULL,
+    reset_token_expires_at = NULL
+WHERE id = $1
+RETURNING id, email, password_hash, role, username, avatar_url, phone, created_at, updated_at
+`
+
+type ResetPasswordParams struct {
+	ID           int64  `json:"id"`
+	PasswordHash string `json:"passwordHash"`
+}
+
+type ResetPasswordRow struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"passwordHash"`
+	Role         UserRole           `json:"role"`
+	Username     string             `json:"username"`
+	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
+	Phone        pgtype.Text        `json:"phone"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+}
+
+func (q *Queries) ResetPassword(ctx context.Context, arg ResetPasswordParams) (ResetPasswordRow, error) {
+	row := q.db.QueryRow(ctx, resetPassword, arg.ID, arg.PasswordHash)
+	var i ResetPasswordRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -185,14 +355,26 @@ type UpdateUserParams struct {
 	ID        int64       `json:"id"`
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+type UpdateUserRow struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"passwordHash"`
+	Role         UserRole           `json:"role"`
+	Username     string             `json:"username"`
+	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
+	Phone        pgtype.Text        `json:"phone"`
+	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error) {
 	row := q.db.QueryRow(ctx, updateUser,
 		arg.Username,
 		arg.AvatarUrl,
 		arg.Phone,
 		arg.ID,
 	)
-	var i User
+	var i UpdateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,

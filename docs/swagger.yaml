@@ -1,0 +1,1935 @@
+basePath: /api/v1
+definitions:
+  dtos.AddCartItemRequest:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  dtos.AdminStatsResponse:
+    properties:
+      cancelled_orders:
+        type: integer
+      delivered_orders:
+        type: integer
+      paid_orders:
+        type: integer
+      pending_orders:
+        type: integer
+      shipped_orders:
+        type: integer
+      total_orders:
+        type: integer
+      total_products:
+        type: integer
+      total_revenue:
+        type: string
+      total_sellers:
+        type: integer
+      total_users:
+        type: integer
+    type: object
+  dtos.AuthResponse:
+    properties:
+      access_token:
+        type: string
+      user:
+        $ref: '#/definitions/dtos.UserResponse'
+    type: object
+  dtos.CartItemResponse:
+    properties:
+      id:
+        type: integer
+      preview_image_url:
+        type: string
+      price:
+        type: string
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      stock:
+        type: integer
+      store:
+        $ref: '#/definitions/dtos.CartStoreInfo'
+      title:
+        type: string
+    type: object
+  dtos.CartResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dtos.CartItemResponse'
+        type: array
+      user_id:
+        type: integer
+    type: object
+  dtos.CartStoreInfo:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  dtos.CategoryResponse:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/dtos.CategoryResponse'
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+      parent_id:
+        type: integer
+      slug:
+        type: string
+    type: object
+  dtos.CreateOrderRequest:
+    properties:
+      customer:
+        allOf:
+        - $ref: '#/definitions/dtos.CustomerInfo'
+        description: 'Для гостей:'
+      delivery:
+        $ref: '#/definitions/dtos.DeliveryInfo'
+      items:
+        description: 'Общие поля:'
+        items:
+          $ref: '#/definitions/dtos.OrderItemRequest'
+        type: array
+    type: object
+  dtos.CreatePaymentRequest:
+    properties:
+      order_id:
+        type: integer
+    type: object
+  dtos.CreateProductRequest:
+    properties:
+      category_id:
+        type: integer
+      description:
+        type: string
+      images:
+        items:
+          type: string
+        type: array
+      price:
+        type: string
+      stock:
+        type: integer
+      title:
+        type: string
+    type: object
+  dtos.CreateSellerApplicationRequest:
+    properties:
+      description:
+        type: string
+      store_name:
+        type: string
+    type: object
+  dtos.CustomerInfo:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      phone:
+        type: string
+    type: object
+  dtos.DeliveryInfo:
+    properties:
+      address:
+        type: string
+      cost:
+        type: string
+      method:
+        type: string
+    type: object
+  dtos.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  dtos.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  dtos.ModerateProductRequest:
+    type: object
+  dtos.OrderItemRequest:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  dtos.OrderItemResponse:
+    properties:
+      id:
+        type: integer
+      price:
+        type: string
+      product_id:
+        type: integer
+      product_title:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  dtos.OrderResponse:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      customer:
+        allOf:
+        - $ref: '#/definitions/dtos.CustomerInfo'
+        description: Guest fields
+      delivery_cost:
+        type: string
+      delivery_method:
+        type: string
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/dtos.OrderItemResponse'
+        type: array
+      public_token:
+        type: string
+      status:
+        type: string
+      total:
+        type: string
+      tracking_number:
+        type: string
+    type: object
+  dtos.PaymentResponse:
+    properties:
+      amount:
+        type: string
+      confirmation_url:
+        type: string
+      created_at:
+        type: string
+      currency:
+        type: string
+      id:
+        type: integer
+      order_id:
+        type: integer
+      provider:
+        type: string
+      provider_payment_id:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dtos.ProductImageResponse:
+    properties:
+      id:
+        type: integer
+      position:
+        type: integer
+      url:
+        type: string
+    type: object
+  dtos.ProductResponse:
+    properties:
+      category:
+        $ref: '#/definitions/dtos.CategoryResponse'
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      images:
+        items:
+          $ref: '#/definitions/dtos.ProductImageResponse'
+        type: array
+      price:
+        type: string
+      rejection_reason:
+        type: string
+      status:
+        type: string
+      stock:
+        type: integer
+      store:
+        $ref: '#/definitions/dtos.ProductStoreInfo'
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dtos.ProductStoreInfo:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  dtos.ProfileResponse:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      phone:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  dtos.RefreshResponse:
+    properties:
+      access_token:
+        type: string
+    type: object
+  dtos.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  dtos.ResetPasswordRequest:
+    properties:
+      password:
+        type: string
+      token:
+        type: string
+    type: object
+  dtos.SellerApplicationResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      status:
+        type: string
+      store_name:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  dtos.StoreResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      logo_url:
+        type: string
+      name:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  dtos.UpdateApplicationStatusRequest:
+    properties:
+      reason:
+        type: string
+      status:
+        description: approved | rejected
+        type: string
+    type: object
+  dtos.UpdateCartItemRequest:
+    properties:
+      quantity:
+        type: integer
+    type: object
+  dtos.UpdateOrderStatusRequest:
+    type: object
+  dtos.UpdateProductRequest:
+    properties:
+      description:
+        type: string
+      price:
+        type: string
+      stock:
+        type: integer
+      title:
+        type: string
+    type: object
+  dtos.UpdateProfileRequest:
+    properties:
+      avatar_url:
+        type: string
+      phone:
+        type: string
+      username:
+        type: string
+    type: object
+  dtos.UpdateStoreRequest:
+    properties:
+      description:
+        type: string
+      logo_url:
+        type: string
+      name:
+        type: string
+    type: object
+  dtos.UpdateTrackingRequest:
+    properties:
+      tracking_number:
+        type: string
+    type: object
+  dtos.UserResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  dtos.WebhookRequest:
+    properties:
+      order_id:
+        type: integer
+      provider_payment_id:
+        type: string
+      status:
+        type: string
+    type: object
+  httputil.APIError:
+    properties:
+      code:
+        type: string
+      details: {}
+      message:
+        type: string
+    type: object
+  httputil.ErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/httputil.APIError'
+    type: object
+  httputil.PaginatedResponse:
+    properties:
+      items: {}
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: Marketplace backend API for buyers, sellers and admins.
+  title: Go Marketplace API
+  version: "1.0"
+paths:
+  /admin/orders:
+    get:
+      description: Returns all orders for a specific user (admin only)
+      parameters:
+      - description: User ID
+        in: query
+        name: user_id
+        required: true
+        type: integer
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputil.PaginatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List orders by user (admin)
+      tags:
+      - admin
+  /admin/orders/{id}:
+    get:
+      description: Returns full order detail with items (admin only)
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.OrderResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get order detail (admin)
+      tags:
+      - admin
+  /admin/products:
+    get:
+      description: Returns paginated list of products filtered by status (admin only)
+      parameters:
+      - description: 'Product status: pending, active, rejected, archived'
+        in: query
+        name: status
+        required: true
+        type: string
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputil.PaginatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List products by moderation status (admin only)
+      tags:
+      - admin
+  /admin/seller-applications:
+    get:
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputil.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List pending seller applications (admin only)
+      tags:
+      - admin
+  /admin/seller-applications/{id}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateApplicationStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.SellerApplicationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Approve or reject seller application (admin only)
+      tags:
+      - admin
+  /admin/stats:
+    get:
+      description: Returns platform-wide statistics (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.AdminStatsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get platform statistics (admin)
+      tags:
+      - admin
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Generates a reset token for the given email
+      parameters:
+      - description: Email address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request password reset
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user and returns access + refresh tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.AuthResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Deletes all refresh tokens for the current user
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      description: Rotates refresh token from cookie and returns new access token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.RefreshResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Refresh tokens
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a buyer account and returns access + refresh tokens
+      parameters:
+      - description: Registration data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets password using the reset token from forgot-password flow
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Reset password using token
+      tags:
+      - auth
+  /cart:
+    delete:
+      description: Removes all items from the current user's cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.CartResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Clear cart
+      tags:
+      - cart
+    get:
+      description: Returns all items in the current user's shopping cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.CartResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user's cart
+      tags:
+      - cart
+  /cart/items:
+    post:
+      consumes:
+      - application/json
+      description: Adds a product to the current user's cart (or updates quantity
+        if already present)
+      parameters:
+      - description: Product ID and quantity
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.AddCartItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.CartResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add item to cart
+      tags:
+      - cart
+  /cart/items/{itemID}:
+    delete:
+      description: Removes a specific item from the current user's cart
+      parameters:
+      - description: Cart item ID
+        in: path
+        name: itemID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.CartResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove item from cart
+      tags:
+      - cart
+    patch:
+      consumes:
+      - application/json
+      description: Updates the quantity of a specific cart item
+      parameters:
+      - description: Cart item ID
+        in: path
+        name: itemID
+        required: true
+        type: integer
+      - description: New quantity
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateCartItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.CartResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update cart item quantity
+      tags:
+      - cart
+  /orders:
+    post:
+      consumes:
+      - application/json
+      description: Creates an order. Authenticated users — user_id from JWT. Guests
+        — customer info required.
+      parameters:
+      - description: Order data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Create an order (authenticated or guest)
+      tags:
+      - orders
+  /orders/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Transitions order status (seller or buyer)
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateOrderStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update order status
+      tags:
+      - orders
+  /orders/{id}/tracking:
+    patch:
+      consumes:
+      - application/json
+      description: Seller or admin sets tracking number after shipment
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Tracking number
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateTrackingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.OrderResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set tracking number for an order
+      tags:
+      - orders
+  /orders/me:
+    get:
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputil.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List current user's orders
+      tags:
+      - orders
+  /orders/me/{id}:
+    get:
+      description: Returns order details (buyer or seller of items in order)
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.OrderResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get order by ID
+      tags:
+      - orders
+  /orders/public/{public_token}:
+    get:
+      description: Returns order details by public token — no auth required
+      parameters:
+      - description: Public token
+        in: path
+        name: public_token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.OrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Get order by public token (guest access)
+      tags:
+      - orders
+  /orders/public/{public_token}/payment:
+    post:
+      consumes:
+      - application/json
+      description: Initiates a payment for a guest order by public token (no auth
+        required)
+      parameters:
+      - description: Public token
+        in: path
+        name: public_token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.PaymentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Create a payment for guest order
+      tags:
+      - payments
+  /orders/seller:
+    get:
+      description: Returns orders containing products from seller's store (seller
+        role)
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputil.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List orders for seller's products
+      tags:
+      - orders
+  /payments:
+    post:
+      consumes:
+      - application/json
+      description: Initiates a payment for an order (returns confirmation URL)
+      parameters:
+      - description: Payment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.CreatePaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.PaymentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a payment
+      tags:
+      - payments
+  /payments/{id}:
+    get:
+      parameters:
+      - description: Payment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.PaymentResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get payment by ID
+      tags:
+      - payments
+  /payments/{id}/refund:
+    post:
+      description: Refunds a succeeded payment (order owner only)
+      parameters:
+      - description: Payment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.PaymentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Refund a payment
+      tags:
+      - payments
+  /payments/me:
+    get:
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputil.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List current user's payments
+      tags:
+      - payments
+  /payments/webhook:
+    post:
+      consumes:
+      - application/json
+      description: Receives payment status updates from provider (no JWT auth)
+      parameters:
+      - description: Webhook payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.WebhookRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Payment provider webhook
+      tags:
+      - payments
+  /products:
+    get:
+      description: Returns paginated list of active products
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by store ID
+        in: query
+        name: store_id
+        type: integer
+      - description: Filter by category ID
+        in: query
+        name: category_id
+        type: integer
+      - description: Minimum price
+        in: query
+        name: min_price
+        type: string
+      - description: Maximum price
+        in: query
+        name: max_price
+        type: string
+      - description: Search by title
+        in: query
+        name: search
+        type: string
+      - description: 'Sort: price_asc, price_desc, created_desc (default)'
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputil.PaginatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: List products with filters
+      tags:
+      - products
+    post:
+      consumes:
+      - application/json
+      description: Creates a product with status 'pending' (requires seller role)
+      parameters:
+      - description: Product data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.ProductResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a product
+      tags:
+      - products
+  /products/{id}:
+    delete:
+      description: Deletes a product (only store owner)
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a product
+      tags:
+      - products
+    get:
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.ProductResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Get product by ID
+      tags:
+      - products
+    patch:
+      consumes:
+      - application/json
+      description: Updates product fields (only store owner)
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.ProductResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a product
+      tags:
+      - products
+  /products/{id}/images:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an image file and associates it with a product (seller
+        only)
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.ProductImageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload an image for a product
+      tags:
+      - products
+  /products/{id}/images/presigned:
+    get:
+      description: Returns a presigned URL for direct upload to S3 (seller only)
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Content-Type of the file
+        in: query
+        name: content_type
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get presigned upload URL
+      tags:
+      - products
+  /products/{id}/moderate:
+    patch:
+      consumes:
+      - application/json
+      description: Approve, reject or archive a product (admin only)
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Moderation decision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.ModerateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.ProductResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Moderate a product
+      tags:
+      - products
+  /products/categories:
+    get:
+      description: Returns a tree of categories and subcategories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dtos.CategoryResponse'
+            type: array
+      summary: List product categories
+      tags:
+      - products
+  /products/images/{id}:
+    delete:
+      description: Deletes an image from a product (seller only)
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a product image
+      tags:
+      - products
+  /seller-applications:
+    post:
+      consumes:
+      - application/json
+      description: Submits a seller application for admin review
+      parameters:
+      - description: Application data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.CreateSellerApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dtos.SellerApplicationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Submit seller application
+      tags:
+      - seller-applications
+  /seller-applications/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dtos.SellerApplicationResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List my seller applications
+      tags:
+      - seller-applications
+  /stores/{id}/products:
+    get:
+      description: Returns paginated list of active products for a specific store
+      parameters:
+      - description: Store ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/httputil.PaginatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: List products by store ID
+      tags:
+      - products
+  /users/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.ProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user profile
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Profile fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.ProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update current user profile
+      tags:
+      - users
+  /users/me/store:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.StoreResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user's store
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Updates store details (name, description, logo)
+      parameters:
+      - description: Store fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.UpdateStoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.StoreResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update store
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and the JWT access token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

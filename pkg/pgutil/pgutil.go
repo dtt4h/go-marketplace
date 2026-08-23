@@ -2,8 +2,10 @@ package pgutil
 
 import (
 	"errors"
+	"mime"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,6 +17,14 @@ func IsUniqueViolation(err error) bool {
 		return pgErr.Code == "23505"
 	}
 	return err != nil && strings.Contains(err.Error(), "23505")
+}
+
+func UniqueViolationConstraint(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return pgErr.ConstraintName
+	}
+	return ""
 }
 
 func IsNoRows(err error) bool {
@@ -47,4 +57,23 @@ func Int8ToPtr(v pgtype.Int8) *int64 {
 		return &v.Int64
 	}
 	return nil
+}
+
+func ToNumeric(v *string) (pgtype.Numeric, error) {
+	if v == nil {
+		return pgtype.Numeric{Valid: false}, nil
+	}
+	var n pgtype.Numeric
+	if err := n.Scan(*v); err != nil {
+		return pgtype.Numeric{}, err
+	}
+	return n, nil
+}
+
+func GenerateUploadKey(contentType string) string {
+	ext := ".bin"
+	if exts, _ := mime.ExtensionsByType(contentType); len(exts) > 0 && exts[0] != "" {
+		ext = exts[0]
+	}
+	return uuid.New().String() + ext
 }

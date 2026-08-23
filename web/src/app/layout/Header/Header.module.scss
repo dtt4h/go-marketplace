@@ -1,0 +1,237 @@
+@use '../../../shared/styles/global.scss' as *;
+
+.header {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.top {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: $azure12;
+  width: 100%;
+  height: 33px;
+  color: white;
+  font-family: $inter;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.mid {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  max-width: 1200px;
+  padding: 14px 20px 0;
+  gap: 24px;
+
+  .logoContainer {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 10px;
+    .logoLetter {
+      border-radius: 9px;
+      width: 38px;
+      height: 38px;
+      background-color: $azure52;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: 800;
+      font-size: 20px;
+      color: white;
+    }
+    .logoWord {
+      font-family: $inter;
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: 0.01em;
+      color: $azure12;
+    }
+  }
+  
+  .searchbarContainer {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+
+    .searchInput {
+      flex: 1;
+      min-width: 0;
+      border-bottom: 1px solid $azure84;
+      border-left: 1px solid $azure84;
+      border-top: 1px solid $azure84;
+      border-radius: 9px 0 0 9px;
+      padding: 11px 15px;
+      height: 48px;
+      font-family: $inter;
+      font-weight: 400;
+      font-size: 14px;
+      color: $grey462;
+    }
+    .searchButton {
+      border-top-left-radius: 0px;
+      border-bottom-left-radius: 0px;
+    }
+  }
+
+  .buttonsContainer{
+    display: flex;
+    flex-shrink: 0;
+    justify-content: space-between;
+    gap: 8px;
+    .becomeSeller {
+      width: 102px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: white;
+      color: $azure27;
+      border: 1px solid $azure84;
+      border-radius: 9px;
+      padding: 0;
+      min-height: 48px;
+      font-family: $inter;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      transition: opacity 0.2s ease;
+
+      &:focus-visible {
+        outline: 2px solid $azure52;
+        outline-offset: 2px;
+      }
+
+      &:hover {
+        cursor: pointer;
+        opacity: 0.8;
+      }
+    }
+    .toProfile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: white;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      border: 1px solid $azure84;
+      border-radius: 10px;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 0.8;
+      }
+
+      &:focus-visible {
+        outline: 2px solid $azure52;
+        outline-offset: 2px;
+      }
+    }
+    .toCart {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: $azure12;
+      color: white;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      border-radius: 10px;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 0.8;
+      }
+
+      &:focus-visible {
+        outline: 2px solid $azure52;
+        outline-offset: 2px;
+      }
+    }
+
+    .cartBadge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 19px;
+      width: 19px;
+      height: 19px;
+      padding: 0 6px;
+      border-radius: 10px;
+      background-color: $red54;
+      color: white;
+      font-family: $inter;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      pointer-events: none;
+    }
+  }
+}
+
+.bot {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  height: 44px;
+  padding: 0 20px;
+
+  .categoryList {
+    display: flex;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 18px;
+    height: 100%;
+
+    > li {
+      display: flex;
+      height: 100%;
+    }
+
+    > li:first-child > a {
+      font-family: $inter;
+      font-weight: 700;
+      font-size: 13px;
+      color: $azure12;
+    }
+
+    > li > a {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      font-family: $inter;
+      font-weight: 500;
+      font-size: 13px;
+      text-align: center;
+      color: $azure35;
+      border-bottom: 2px solid transparent;
+      transition: border-color 0.2s ease;
+
+      &:hover,
+      &:focus-visible {
+        border-bottom-color: $azure52;
+      }
+    }
+  }
+}
+
+.visuallyHidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

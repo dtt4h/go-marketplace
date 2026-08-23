@@ -1,0 +1,143 @@
+@use '../shared/styles/global.scss' as *;
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+.profileHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.identityContainer,
+.actionContainer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatarContainer {
+  display: flex;
+  flex: 0 0 60px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  width: 60px;
+  height: 60px;
+  background-color: $azure12;
+}
+
+.avatarMok {
+  color: white;
+  font-family: $inter;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.nameContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profileName {
+  color: $azure12;
+  font-family: $inter;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.profileDesc {
+  color: $grey46;
+  font-family: $inter;
+  font-size: 13px;
+}
+
+.addProductButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.addIcon {
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.statCard {
+  border: 1px solid $grey91;
+  border-radius: 12px;
+  padding: 18px;
+  background: white;
+  font-family: $inter;
+
+  p {
+    margin-bottom: 4px;
+    color: $grey46;
+    font-size: 12px;
+  }
+
+  strong {
+    color: $azure12;
+    font-size: 28px;
+    font-weight: 800;
+  }
+
+  .moderationValue {
+    color: #b7791f;
+  }
+
+  .ordersValue {
+    color: $azure52;
+  }
+}
+
+.navContainer {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  border-bottom: 1px solid $grey91;
+}
+
+.navButton {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 12px 4px;
+  background: transparent;
+  color: $azure65;
+  font-family: $inter;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &[aria-pressed='true'] {
+    border-bottom-color: $azure52;
+    color: $azure12;
+  }
+}
+
+@media (max-width: 900px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profileHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

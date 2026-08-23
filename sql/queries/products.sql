@@ -14,7 +14,7 @@ ORDER BY id;
 
 -- name: GetProduct :one
 SELECT p.id, p.store_id, p.category_id, p.title, p.description,
-       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       p.price, p.stock, p.status, p.rejection_reason, p.created_at, p.updated_at,
        s.name AS store_name, s.description AS store_description,
        c.name AS category_name, c.slug AS category_slug
 FROM products p
@@ -72,26 +72,30 @@ WHERE id = $1;
 
 -- name: ModerateProduct :execresult
 UPDATE products
-SET status = $2,
+SET status = $2::product_status,
+    rejection_reason = CASE
+        WHEN $2::product_status = 'rejected'::product_status THEN COALESCE($3::text, '')
+        ELSE NULL
+    END,
     updated_at = now()
 WHERE id = $1;
 
 -- name: ListProductImages :many
-SELECT id, product_id, url, position
+SELECT id, product_id, url, position, object_key
 FROM product_images
 WHERE product_id = $1
 ORDER BY position ASC;
 
 -- name: ListProductImagesByProductIDs :many
-SELECT id, product_id, url, position
+SELECT id, product_id, url, position, object_key
 FROM product_images
 WHERE product_id = ANY($1::bigint[])
 ORDER BY product_id, position ASC;
 
 -- name: CreateProductImage :one
-INSERT INTO product_images (product_id, url, position)
-VALUES ($1, $2, $3)
-RETURNING id, product_id, url, position;
+INSERT INTO product_images (product_id, url, position, object_key)
+VALUES ($1, $2, $3, $4)
+RETURNING id, product_id, url, position, object_key;
 
 -- name: DeleteProductImages :exec
 DELETE FROM product_images
@@ -102,3 +106,48 @@ SELECT p.id, s.user_id AS store_owner_id
 FROM products p
 JOIN stores s ON p.store_id = s.id
 WHERE p.id = $1;
+
+-- name: ListProductsByStatus :many
+SELECT p.id, p.store_id, p.category_id, p.title, p.description,
+       p.price, p.stock, p.status, p.rejection_reason, p.created_at, p.updated_at,
+       s.name AS store_name, s.description AS store_description,
+       c.name AS category_name, c.slug AS category_slug
+FROM products p
+LEFT JOIN stores s ON p.store_id = s.id
+LEFT JOIN categories c ON p.category_id = c.id
+WHERE p.status = $1
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListProductsByStatusCount :one
+SELECT COUNT(*)
+FROM products p
+WHERE p.status = $1;
+
+-- name: ListProductsByStoreID :many
+SELECT p.id, p.store_id, p.category_id, p.title, p.description,
+       p.price, p.stock, p.status, p.created_at, p.updated_at,
+       s.name AS store_name, s.description AS store_description,
+       c.name AS category_name, c.slug AS category_slug
+FROM products p
+LEFT JOIN stores s ON p.store_id = s.id
+LEFT JOIN categories c ON p.category_id = c.id
+WHERE p.store_id = $1
+  AND p.status = 'active'
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListProductsByStoreIDCount :one
+SELECT COUNT(*)
+FROM products p
+WHERE p.store_id = $1
+  AND p.status = 'active';
+
+-- name: GetImageByID :one
+SELECT id, product_id, url, position, object_key
+FROM product_images
+WHERE id = $1;
+
+-- name: DeleteImageByID :exec
+DELETE FROM product_images
+WHERE id = $1;

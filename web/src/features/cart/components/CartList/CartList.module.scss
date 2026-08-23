@@ -1,0 +1,19 @@
+@use '../../../../shared/styles/global.scss' as *;
+
+.emptyState {
+  width: 100%;
+}
+
+.emptyMessage {
+  font-family: $inter;
+  font-weight: 400;
+  font-size: 24px;
+  color: $grey46;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 14px;
+}

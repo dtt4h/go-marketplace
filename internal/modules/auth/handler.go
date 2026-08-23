@@ -10,14 +10,28 @@ import (
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
 )
 
+// AuthHandler handles HTTP requests for authentication.
 type AuthHandler struct {
 	service AuthService
+	devMode bool
 }
 
-func NewAuthHandler(service AuthService) *AuthHandler {
-	return &AuthHandler{service: service}
+// NewAuthHandler creates a new AuthHandler.
+func NewAuthHandler(service AuthService, devMode bool) *AuthHandler {
+	return &AuthHandler{service: service, devMode: devMode}
 }
 
+// Register godoc
+// @Summary      Register a new user
+// @Description  Creates a buyer account and returns access + refresh tokens
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.RegisterRequest  true  "Registration data"
+// @Success      201  {object}  dtos.AuthResponse
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Failure      409  {object}  httputil.ErrorResponse
+// @Router       /auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req dtos.RegisterRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
@@ -25,15 +39,26 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate input
+	errs := dtos.ValidateEmail(req.Email)
+	errs.AddMap(dtos.ValidatePassword(req.Password))
+	errs.AddMap(dtos.ValidateUsername(req.Username))
+	if !errs.IsEmpty() {
+		httputil.ValidationError(w, "validation failed", errs)
+		return
+	}
+
 	resp, err := h.service.Register(r.Context(), req)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrWeakPassword):
+		case errors.Is(err, ErrWeakPassword), errors.Is(err, ErrEmailRequired), errors.Is(err, ErrUsernameRequired):
 			httputil.ValidationError(w, err.Error(), nil)
 		case errors.Is(err, ErrEmailTaken):
-			httputil.Conflict(w, err.Error())
+			httputil.ErrorWithDetails(w, http.StatusConflict, "CONFLICT", err.Error(), map[string]string{"field": "email"})
+		case errors.Is(err, ErrUsernameTaken):
+			httputil.ErrorWithDetails(w, http.StatusConflict, "CONFLICT", err.Error(), map[string]string{"field": "username"})
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -42,6 +67,16 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusCreated, resp)
 }
 
+// Login godoc
+// @Summary      Login
+// @Description  Authenticates user and returns access + refresh tokens
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.LoginRequest  true  "Login credentials"
+// @Success      200  {object}  dtos.AuthResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req dtos.LoginRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
@@ -55,7 +90,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrInvalidCredentials):
 			httputil.Unauthorized(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -64,6 +99,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// Refresh godoc
+// @Summary      Refresh tokens
+// @Description  Rotates refresh token from cookie and returns new access token
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  dtos.RefreshResponse
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /auth/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := r.Cookie("refresh_token")
 	if err != nil {
@@ -78,7 +121,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 			h.clearRefreshCookie(w)
 			httputil.Unauthorized(w, err.Error())
 		default:
-			httputil.InternalError(w, err.Error())
+			httputil.InternalError(w, r, err.Error())
 		}
 		return
 	}
@@ -87,6 +130,14 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, resp)
 }
 
+// Logout godoc
+// @Summary      Logout
+// @Description  Deletes all refresh tokens for the current user
+// @Tags         auth
+// @Security     BearerAuth
+// @Success      204
+// @Failure      401  {object}  httputil.ErrorResponse
+// @Router       /auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	userID, ok := mw.UserIDFromCtx(r.Context())
 	if !ok {
@@ -95,7 +146,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.Logout(r.Context(), userID); err != nil {
-		httputil.InternalError(w, err.Error())
+		httputil.InternalError(w, r, err.Error())
 		return
 	}
 
@@ -109,6 +160,7 @@ func (h *AuthHandler) setRefreshCookie(w http.ResponseWriter, token string) {
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   !h.devMode,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(168 * time.Hour.Seconds()),
 	})
@@ -120,7 +172,78 @@ func (h *AuthHandler) clearRefreshCookie(w http.ResponseWriter) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   !h.devMode,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   -1,
+	})
+}
+
+// ForgotPassword godoc
+// @Summary      Request password reset
+// @Description  Generates a reset token for the given email
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.ForgotPasswordRequest  true  "Email address"
+// @Success      200  {object}  map[string]string
+// @Router       /auth/forgot-password [post]
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req dtos.ForgotPasswordRequest
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.ValidationError(w, "invalid request body", nil)
+		return
+	}
+
+	if req.Email == "" {
+		httputil.ValidationError(w, "email is required", nil)
+		return
+	}
+
+	_ = h.service.ForgotPassword(r.Context(), req.Email)
+
+	httputil.JSON(w, http.StatusOK, map[string]string{
+		"message": "if the email exists, a reset token has been generated",
+	})
+}
+
+// ResetPassword godoc
+// @Summary      Reset password using token
+// @Description  Resets password using the reset token from forgot-password flow
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dtos.ResetPasswordRequest  true  "Reset token and new password"
+// @Success      200  {object}  map[string]string
+// @Failure      400  {object}  httputil.ErrorResponse
+// @Router       /auth/reset-password [post]
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req dtos.ResetPasswordRequest
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.ValidationError(w, "invalid request body", nil)
+		return
+	}
+
+	if req.Token == "" {
+		httputil.ValidationError(w, "token is required", nil)
+		return
+	}
+
+	if req.Password == "" {
+		httputil.ValidationError(w, "password is required", nil)
+		return
+	}
+
+	if err := h.service.ResetPassword(r.Context(), req.Token, req.Password); err != nil {
+		switch {
+		case errors.Is(err, ErrWeakPassword):
+			httputil.ValidationError(w, err.Error(), nil)
+		default:
+			httputil.ValidationError(w, "invalid or expired reset token", nil)
+		}
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, map[string]string{
+		"message": "password has been reset successfully",
 	})
 }

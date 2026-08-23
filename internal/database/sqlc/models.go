@@ -187,6 +187,15 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 	return string(ns.UserRole), nil
 }
 
+type CartItem struct {
+	ID        int64              `json:"id"`
+	UserID    int64              `json:"userId"`
+	ProductID int64              `json:"productId"`
+	Quantity  int32              `json:"quantity"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
+}
+
 type Category struct {
 	ID       int64       `json:"id"`
 	ParentID pgtype.Int8 `json:"parentId"`
@@ -195,13 +204,22 @@ type Category struct {
 }
 
 type Order struct {
-	ID        int64              `json:"id"`
-	UserID    int64              `json:"userId"`
-	Status    OrderStatus        `json:"status"`
-	Total     pgtype.Numeric     `json:"total"`
-	Address   string             `json:"address"`
-	CreatedAt pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
+	ID                int64              `json:"id"`
+	UserID            pgtype.Int8        `json:"userId"`
+	Status            OrderStatus        `json:"status"`
+	Total             pgtype.Numeric     `json:"total"`
+	Address           string             `json:"address"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt         pgtype.Timestamptz `json:"updatedAt"`
+	PublicToken       pgtype.Text        `json:"publicToken"`
+	CustomerFirstName pgtype.Text        `json:"customerFirstName"`
+	CustomerLastName  pgtype.Text        `json:"customerLastName"`
+	CustomerEmail     pgtype.Text        `json:"customerEmail"`
+	CustomerPhone     pgtype.Text        `json:"customerPhone"`
+	DeliveryMethod    pgtype.Text        `json:"deliveryMethod"`
+	DeliveryCost      pgtype.Numeric     `json:"deliveryCost"`
+	TrackingNumber    pgtype.Text        `json:"trackingNumber"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
 }
 
 type OrderItem struct {
@@ -225,23 +243,25 @@ type Payment struct {
 }
 
 type Product struct {
-	ID          int64              `json:"id"`
-	StoreID     int64              `json:"storeId"`
-	CategoryID  pgtype.Int8        `json:"categoryId"`
-	Title       string             `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	Price       pgtype.Numeric     `json:"price"`
-	Stock       int32              `json:"stock"`
-	Status      ProductStatus      `json:"status"`
-	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt   pgtype.Timestamptz `json:"updatedAt"`
+	ID              int64              `json:"id"`
+	StoreID         int64              `json:"storeId"`
+	CategoryID      pgtype.Int8        `json:"categoryId"`
+	Title           string             `json:"title"`
+	Description     pgtype.Text        `json:"description"`
+	Price           pgtype.Numeric     `json:"price"`
+	Stock           int32              `json:"stock"`
+	Status          ProductStatus      `json:"status"`
+	RejectionReason pgtype.Text        `json:"rejectionReason"`
+	CreatedAt       pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt       pgtype.Timestamptz `json:"updatedAt"`
 }
 
 type ProductImage struct {
-	ID        int64  `json:"id"`
-	ProductID int64  `json:"productId"`
-	Url       string `json:"url"`
-	Position  int32  `json:"position"`
+	ID        int64       `json:"id"`
+	ProductID int64       `json:"productId"`
+	Url       string      `json:"url"`
+	Position  int32       `json:"position"`
+	ObjectKey pgtype.Text `json:"objectKey"`
 }
 
 type RefreshToken struct {
@@ -250,6 +270,16 @@ type RefreshToken struct {
 	Token     string             `json:"token"`
 	ExpiresAt pgtype.Timestamptz `json:"expiresAt"`
 	CreatedAt pgtype.Timestamptz `json:"createdAt"`
+}
+
+type SellerApplication struct {
+	ID          int64              `json:"id"`
+	UserID      int64              `json:"userId"`
+	StoreName   string             `json:"storeName"`
+	Description pgtype.Text        `json:"description"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt   pgtype.Timestamptz `json:"updatedAt"`
 }
 
 type Store struct {
@@ -263,13 +293,15 @@ type Store struct {
 }
 
 type User struct {
-	ID           int64              `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"passwordHash"`
-	Role         UserRole           `json:"role"`
-	Username     string             `json:"username"`
-	AvatarUrl    pgtype.Text        `json:"avatarUrl"`
-	Phone        pgtype.Text        `json:"phone"`
-	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+	ID                  int64              `json:"id"`
+	Email               string             `json:"email"`
+	PasswordHash        string             `json:"passwordHash"`
+	Role                UserRole           `json:"role"`
+	Username            string             `json:"username"`
+	AvatarUrl           pgtype.Text        `json:"avatarUrl"`
+	Phone               pgtype.Text        `json:"phone"`
+	CreatedAt           pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt           pgtype.Timestamptz `json:"updatedAt"`
+	ResetToken          pgtype.Text        `json:"resetToken"`
+	ResetTokenExpiresAt pgtype.Timestamptz `json:"resetTokenExpiresAt"`
 }
