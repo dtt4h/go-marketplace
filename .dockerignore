@@ -1,0 +1,46 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+vendor/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+pgdata/
+redisdata/
+minio_data/
+backups/
+
+# Frontend
+web/node_modules/
+web/dist/
+
+# Git
+.git/
+.gitignore
+
+# Docs (not needed in runtime image)
+docs/
+*.md
+
+# Migrations are embedded in binary, no need to copy
+internal/migrations/*.sql
