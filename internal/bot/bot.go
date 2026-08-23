@@ -86,6 +86,9 @@ func (b *Bot) registerHandlers() {
 	b.bot.Handle("\xf0\x9f\x93\x8b Заявки", b.handleApplications)
 	b.bot.Handle("\xf0\x9f\x9b\x92 Заказы", b.handleOrdersMenu)
 
+	// Fallback: any unrecognized text → show menu
+	b.bot.Handle(telebot.OnText, b.handleTextFallback)
+
 	// Main menu inline callbacks
 	b.bot.Handle(&telebot.InlineButton{Unique: "menu_stats"}, b.handleStats)
 	b.bot.Handle(&telebot.InlineButton{Unique: "menu_moderate"}, b.handleModerate)
@@ -95,6 +98,9 @@ func (b *Bot) registerHandlers() {
 
 	// Stats refresh
 	b.bot.Handle(&telebot.InlineButton{Unique: "stats_refresh"}, b.handleStats)
+
+	// Noop (pagination page indicator — non-clickable)
+	b.bot.Handle(&telebot.InlineButton{Unique: "noop"}, b.handleNoop)
 
 	// Order filter callbacks
 	b.bot.Handle(&telebot.InlineButton{Unique: "orders_all"}, b.handleOrdersAll)

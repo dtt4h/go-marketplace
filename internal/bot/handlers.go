@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	telebot "gopkg.in/telebot.v3"
@@ -14,7 +15,6 @@ import (
 // ===================== KEYBOARDS =====================
 
 // replyMainMenu — постоянная клавиатура над полем ввода.
-// Даёт быстрый доступ к разделам без команд.
 func replyMainMenu() *telebot.ReplyMarkup {
 	rm := &telebot.ReplyMarkup{ResizeKeyboard: true}
 	rm.Reply(
@@ -30,7 +30,6 @@ func replyMainMenu() *telebot.ReplyMarkup {
 	return rm
 }
 
-// mainMenuInline — inline-кнопки главного меню (внутри сообщения).
 func mainMenuInline() *telebot.ReplyMarkup {
 	rm := &telebot.ReplyMarkup{}
 	rm.Inline(
@@ -106,8 +105,6 @@ func applicationKeyboard(appID int64) *telebot.ReplyMarkup {
 }
 
 // paginationKeyboard — универсальная пагинация.
-// unique — префикс колбэка (mod_page, app_page, orders_page).
-// data — строка, передаваемая в callback (формат "page:status" или просто "page").
 func paginationKeyboard(unique, data string, page, totalPages int) *telebot.ReplyMarkup {
 	rm := &telebot.ReplyMarkup{}
 
@@ -127,7 +124,32 @@ func paginationKeyboard(unique, data string, page, totalPages int) *telebot.Repl
 	return rm
 }
 
-func orderDetailKeyboard(orderID int64) *telebot.ReplyMarkup {
+// ordersListKeyboard — inline-кнопки для каждого заказа + пагинация.
+func ordersListKeyboard(items []dtos.OrderListItem, unique, data string, page, totalPages int) *telebot.ReplyMarkup {
+	rm := &telebot.ReplyMarkup{}
+	rows := make([]telebot.Row, 0, len(items)+2)
+
+	for _, item := range items {
+		label := fmt.Sprintf("%s #%d · %s ₽", orderStatusEmoji(string(item.Status)), item.ID, item.Total)
+		rows = append(rows, rm.Row(rm.Data(label, "order_detail", fmt.Sprintf("%d", item.ID))))
+	}
+
+	var navBtns []telebot.Btn
+	if page > 1 {
+		navBtns = append(navBtns, rm.Data("⬅️", unique, fmt.Sprintf("%d:%s", page-1, data)))
+	}
+	navBtns = append(navBtns, rm.Data(fmt.Sprintf("📄 %d/%d", page, totalPages), "noop", ""))
+	if page < totalPages {
+		navBtns = append(navBtns, rm.Data("➡️", unique, fmt.Sprintf("%d:%s", page+1, data)))
+	}
+	rows = append(rows, rm.Row(navBtns...))
+	rows = append(rows, rm.Row(rm.Data("⬅️ В меню", "menu_back", "")))
+
+	rm.Inline(rows...)
+	return rm
+}
+
+func orderDetailKeyboard() *telebot.ReplyMarkup {
 	rm := &telebot.ReplyMarkup{}
 	rm.Inline(
 		rm.Row(
@@ -152,6 +174,19 @@ func (b *Bot) handleStart(c telebot.Context) error {
 	return c.Send(text, replyMainMenu(), mainMenuInline(), telebot.ModeMarkdown)
 }
 
+// handleTextFallback — если админ пишет произвольный текст.
+func (b *Bot) handleTextFallback(c telebot.Context) error {
+	text := "🤖 Используйте кнопки для навигации.\n\n" +
+		"Доступные разделы:\n" +
+		"📊 Статистика · 📦 Модерация · 📋 Заявки · 🛒 Заказы"
+	return c.Send(text, replyMainMenu(), telebot.ModeMarkdown)
+}
+
+// handleNoop — заглушка для некликабельных кнопок (индикатор страницы).
+func (b *Bot) handleNoop(c telebot.Context) error {
+	return c.Respond()
+}
+
 func (b *Bot) handleBackToMenu(c telebot.Context) error {
 	text := "🤖 *Админ-панель Go Marketplace*\n\nВыберите раздел:"
 	return c.Edit(text, mainMenuInline(), telebot.ModeMarkdown)
@@ -161,7 +196,7 @@ func (b *Bot) handleStats(c telebot.Context) error {
 	stats, err := b.statsSvc.GetStats(context.Background())
 	if err != nil {
 		b.log.Error("bot: get stats failed", slog.String("error", err.Error()))
-		return c.Edit("❌ Не удалось получить статистику", backKeyboard())
+		return b.safeEdit(c, "❌ Не удалось получить статистику", backKeyboard())
 	}
 
 	totalOrders := stats.TotalOrders
@@ -183,7 +218,8 @@ func (b *Bot) handleStats(c telebot.Context) error {
 			"📤 Отправлены: *%d* %s\n"+
 			"✅ Доставлены: *%d* %s\n"+
 			"❌ Отменены: *%d* %s\n\n"+
-			"💰 *Выручка: %s ₽*",
+			"💰 *Выручка: %s ₽*\n\n"+
+			"🕐 _Обновлено: %s_",
 		stats.TotalUsers, stats.TotalSellers,
 		stats.TotalProducts, stats.TotalOrders,
 		stats.PendingOrders, progressBar(stats.PendingOrders, totalOrders),
@@ -192,9 +228,10 @@ func (b *Bot) handleStats(c telebot.Context) error {
 		stats.DeliveredOrders, progressBar(stats.DeliveredOrders, totalOrders),
 		stats.CancelledOrders, progressBar(stats.CancelledOrders, totalOrders),
 		stats.TotalRevenue,
+		time.Now().Format("15:04:05"),
 	)
 
-	return c.Edit(text, statsKeyboard(), telebot.ModeMarkdown)
+	return b.safeEdit(c, text, statsKeyboard(), telebot.ModeMarkdown)
 }
 
 func (b *Bot) handleModerate(c telebot.Context) error {
@@ -214,20 +251,22 @@ func (b *Bot) sendModeratePage(c telebot.Context, page int) error {
 	items, total, err := b.productSvc.ListProductsByStatus(context.Background(), "pending", page, pageLimit)
 	if err != nil {
 		b.log.Error("bot: list pending products failed", slog.String("error", err.Error()))
-		return c.Edit("❌ Не удалось получить список товаров", backKeyboard())
+		return b.safeEdit(c, "❌ Не удалось получить список товаров", backKeyboard())
 	}
 
 	if total == 0 {
-		return c.Edit("✅ *Нет товаров на модерации*\n\nВсе товары проверены! 🎉", backKeyboard(), telebot.ModeMarkdown)
+		return b.safeEdit(c, "✅ *Нет товаров на модерации*\n\nВсе товары проверены! 🎉", backKeyboard(), telebot.ModeMarkdown)
 	}
 
-	totalPages := int((total + int64(pageLimit) - 1) / int64(pageLimit))
-	if totalPages < 1 {
-		totalPages = 1
-	}
+	totalPages := totalPages(total)
 
+	// If called from reply keyboard (no callback), Send; otherwise Edit
 	header := fmt.Sprintf("🔍 *Товары на модерации* (%d)\n\n_Страница %d из %d_", total, page, totalPages)
-	c.Edit(header, telebot.ModeMarkdown)
+	if c.Callback() == nil {
+		c.Send(header, telebot.ModeMarkdown)
+	} else {
+		c.Edit(header, telebot.ModeMarkdown)
+	}
 
 	for _, item := range items {
 		storeName := "Неизвестно"
@@ -249,7 +288,7 @@ func (b *Bot) sendModeratePage(c telebot.Context, page int) error {
 		}
 	}
 
-	return c.Send("Навигация:", paginationKeyboard("mod_page", "", page, totalPages))
+	return c.Send("📄 Навигация:", paginationKeyboard("mod_page", "", page, totalPages))
 }
 
 func (b *Bot) handleApplications(c telebot.Context) error {
@@ -269,20 +308,21 @@ func (b *Bot) sendApplicationsPage(c telebot.Context, page int) error {
 	apps, total, err := b.appSvc.ListPending(context.Background(), page, pageLimit)
 	if err != nil {
 		b.log.Error("bot: list pending applications failed", slog.String("error", err.Error()))
-		return c.Edit("❌ Не удалось получить список заявок", backKeyboard())
+		return b.safeEdit(c, "❌ Не удалось получить список заявок", backKeyboard())
 	}
 
 	if total == 0 {
-		return c.Edit("✅ *Нет заявок продавцов*\n\nВсе заявки рассмотрены! 🎉", backKeyboard(), telebot.ModeMarkdown)
+		return b.safeEdit(c, "✅ *Нет заявок продавцов*\n\nВсе заявки рассмотрены! 🎉", backKeyboard(), telebot.ModeMarkdown)
 	}
 
-	totalPages := int((total + int64(pageLimit) - 1) / int64(pageLimit))
-	if totalPages < 1 {
-		totalPages = 1
-	}
+	totalPages := totalPages(total)
 
 	header := fmt.Sprintf("📋 *Заявки продавцов* (%d)\n\n_Страница %d из %d_", total, page, totalPages)
-	c.Edit(header, telebot.ModeMarkdown)
+	if c.Callback() == nil {
+		c.Send(header, telebot.ModeMarkdown)
+	} else {
+		c.Edit(header, telebot.ModeMarkdown)
+	}
 
 	for _, app := range apps {
 		text := fmt.Sprintf(
@@ -300,12 +340,12 @@ func (b *Bot) sendApplicationsPage(c telebot.Context, page int) error {
 		}
 	}
 
-	return c.Send("Навигация:", paginationKeyboard("app_page", "", page, totalPages))
+	return c.Send("📄 Навигация:", paginationKeyboard("app_page", "", page, totalPages))
 }
 
 func (b *Bot) handleOrdersMenu(c telebot.Context) error {
 	text := "🛒 *Заказы*\n\nВыберите фильтр:"
-	return c.Edit(text, ordersMenuKeyboard(), telebot.ModeMarkdown)
+	return b.safeEdit(c, text, ordersMenuKeyboard(), telebot.ModeMarkdown)
 }
 
 func (b *Bot) handleOrdersAll(c telebot.Context) error {
@@ -343,7 +383,7 @@ func (b *Bot) sendOrdersList(c telebot.Context, status string, page int) error {
 
 	if err != nil {
 		b.log.Error("bot: list orders failed", slog.String("error", err.Error()))
-		return c.Edit("❌ Не удалось получить заказы", ordersMenuKeyboard())
+		return b.safeEdit(c, "❌ Не удалось получить заказы", ordersMenuKeyboard())
 	}
 
 	if total == 0 {
@@ -351,7 +391,7 @@ func (b *Bot) sendOrdersList(c telebot.Context, status string, page int) error {
 		if status != "" {
 			title = orderStatusTitle(status)
 		}
-		return c.Edit(fmt.Sprintf("📦 *%s*\n\nЗаказов нет", title), ordersMenuKeyboard(), telebot.ModeMarkdown)
+		return b.safeEdit(c, fmt.Sprintf("📦 *%s*\n\nЗаказов нет", title), ordersMenuKeyboard(), telebot.ModeMarkdown)
 	}
 
 	title := "Все заказы"
@@ -359,24 +399,14 @@ func (b *Bot) sendOrdersList(c telebot.Context, status string, page int) error {
 		title = orderStatusTitle(status)
 	}
 
-	totalPages := int((total + int64(pageLimit) - 1) / int64(pageLimit))
-	if totalPages < 1 {
-		totalPages = 1
-	}
+	tp := totalPages(total)
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("🛒 *%s* (%d)\n\n", title, total))
+	text := fmt.Sprintf("🛒 *%s* (%d)\n\n_Нажмите на заказ для деталей_\n_Страница %d из %d_",
+		title, total, page, tp)
 
-	for _, item := range items {
-		sb.WriteString(fmt.Sprintf(
-			"%s *#%d* | %s ₽ | товаров: %d\n",
-			orderStatusEmoji(string(item.Status)), item.ID, item.Total, item.ItemsCount,
-		))
-	}
+	kb := ordersListKeyboard(items, "orders_page", status, page, tp)
 
-	sb.WriteString(fmt.Sprintf("\n_Страница %d из %d_", page, totalPages))
-
-	return c.Edit(sb.String(), paginationKeyboard("orders_page", status, page, totalPages), telebot.ModeMarkdown)
+	return b.safeEdit(c, text, kb, telebot.ModeMarkdown)
 }
 
 func (b *Bot) handleOrderDetail(c telebot.Context) error {
@@ -388,7 +418,7 @@ func (b *Bot) handleOrderDetail(c telebot.Context) error {
 	order, err := b.orderSvc.GetOrderDetail(context.Background(), orderID)
 	if err != nil {
 		b.log.Error("bot: get order detail failed", slog.String("error", err.Error()))
-		return c.Edit("❌ Заказ не найден", ordersMenuKeyboard())
+		return b.safeEdit(c, "❌ Заказ не найден", ordersMenuKeyboard())
 	}
 
 	var sb strings.Builder
@@ -424,10 +454,31 @@ func (b *Bot) handleOrderDetail(c telebot.Context) error {
 
 	sb.WriteString(fmt.Sprintf("\n📅 Создан: %s", order.CreatedAt.Format("02.01.2006 15:04")))
 
-	return c.Edit(sb.String(), orderDetailKeyboard(order.ID), telebot.ModeMarkdown)
+	return b.safeEdit(c, sb.String(), orderDetailKeyboard(), telebot.ModeMarkdown)
 }
 
 // ===================== HELPERS =====================
+
+// safeEdit — Edit с fallback на Send, если сообщение слишком старое.
+func (b *Bot) safeEdit(c telebot.Context, text string, rm *telebot.ReplyMarkup, opts ...interface{}) error {
+	args := append([]interface{}{rm}, opts...)
+	if c.Callback() == nil {
+		return c.Send(text, args...)
+	}
+	if err := c.Edit(text, args...); err != nil {
+		b.log.Debug("bot: edit failed, sending new message", slog.String("error", err.Error()))
+		return c.Send(text, args...)
+	}
+	return nil
+}
+
+func totalPages(total int64) int {
+	tp := int((total + int64(pageLimit) - 1) / int64(pageLimit))
+	if tp < 1 {
+		tp = 1
+	}
+	return tp
+}
 
 func progressBar(value, total int64) string {
 	if total == 0 {
