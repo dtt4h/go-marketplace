@@ -32,6 +32,9 @@ func (s *Server) setupRoutes() {
 		httpSwagger.URL("/swagger/doc.json"),
 	))
 
+	// Prometheus metrics endpoint
+	s.router.Handle("/metrics", s.metrics.Handler())
+
 	s.router.Route("/api/v1", func(r chi.Router) {
 		s.registerAuthRoutes(r)
 		s.registerUserRoutes(r)
@@ -50,7 +53,7 @@ func (s *Server) registerAuthRoutes(r chi.Router) {
 	authSvc := auth.NewAuthService(authRepo, s.cfg)
 	authHandler := auth.NewAuthHandler(authSvc, s.cfg.DevMode)
 
-	authRL := mw.NewRateLimiter(10, time.Minute)
+	authRL := mw.NewRateLimiterWithLog(s.rdb, s.log, 10, time.Minute)
 
 	r.With(mw.RateLimit(authRL)).Post("/auth/register", authHandler.Register)
 	r.With(mw.RateLimit(authRL)).Post("/auth/login", authHandler.Login)
@@ -79,8 +82,8 @@ func (s *Server) registerProductRoutes(r chi.Router) {
 
 	productRepo := products.NewProductRepository(queries, s.db)
 	storeResolver := users.NewUserRepository(queries, s.db)
-	productSvc := products.NewProductService(productRepo, storeResolver)
-	productHandler := products.NewProductHandler(productSvc)
+	productSvc := products.NewProductService(productRepo, storeResolver, s.cache)
+	productHandler := products.NewProductHandler(productSvc, s.cache)
 
 	r.Get("/products", productHandler.ListProducts)
 	r.Get("/products/categories", productHandler.ListCategories)
@@ -157,8 +160,8 @@ func (s *Server) registerOrderRoutes(r chi.Router) {
 	adminStatsHandler := orders.NewAdminStatsHandler(adminStatsSvc)
 
 	// Rate limiters
-	orderRL := mw.NewRateLimiter(20, time.Minute)
-	paymentRL := mw.NewRateLimiter(10, time.Minute)
+	orderRL := mw.NewRateLimiterWithLog(s.rdb, s.log, 20, time.Minute)
+	paymentRL := mw.NewRateLimiterWithLog(s.rdb, s.log, 10, time.Minute)
 
 	// Guest checkout — no auth required
 	r.With(mw.RateLimit(orderRL)).Post("/orders", orderHandler.CreateOrder)

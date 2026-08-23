@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/config"
+	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,17 +16,17 @@ import (
 // --- Mocks ---
 
 type mockAuthRepository struct {
-	createUser       func(ctx context.Context, email, passwordHash string, role db.UserRole, username string) (db.User, error)
-	getUserByEmail   func(ctx context.Context, email string) (db.User, error)
-	getUserByID      func(ctx context.Context, id int64) (db.User, error)
-	createRefresh    func(ctx context.Context, userID int64, token string, expiresAt time.Time) (db.RefreshToken, error)
-	getRefresh       func(ctx context.Context, token string) (db.RefreshToken, error)
-	deleteRefresh    func(ctx context.Context, token string) error
+	createUser        func(ctx context.Context, email, passwordHash string, role db.UserRole, username string) (db.User, error)
+	getUserByEmail    func(ctx context.Context, email string) (db.User, error)
+	getUserByID       func(ctx context.Context, id int64) (db.User, error)
+	createRefresh     func(ctx context.Context, userID int64, token string, expiresAt time.Time) (db.RefreshToken, error)
+	getRefresh        func(ctx context.Context, token string) (db.RefreshToken, error)
+	deleteRefresh     func(ctx context.Context, token string) error
 	deleteUserRefresh func(ctx context.Context, userID int64) error
-	generateReset    func(ctx context.Context, userID int64, expiresAt time.Time) (string, error)
-	getUserByReset   func(ctx context.Context, tokenHash string) (db.User, error)
-	deleteReset      func(ctx context.Context, userID int64) error
-	resetPassword    func(ctx context.Context, userID int64, passwordHash string) (db.User, error)
+	generateReset     func(ctx context.Context, userID int64, expiresAt time.Time) (string, error)
+	getUserByReset    func(ctx context.Context, tokenHash string) (db.User, error)
+	deleteReset       func(ctx context.Context, userID int64) error
+	resetPassword     func(ctx context.Context, userID int64, passwordHash string) (db.User, error)
 }
 
 func (m *mockAuthRepository) CreateUser(ctx context.Context, email, passwordHash string, role db.UserRole, username string) (db.User, error) {
@@ -66,8 +66,8 @@ func (m *mockAuthRepository) ResetPassword(ctx context.Context, userID int64, pa
 func newTestService(repo AuthRepository) AuthService {
 	return NewAuthService(repo, &config.Config{
 		JWT: config.JWTConfig{
-			Secret:    "test-secret-key-for-jwt-signing",
-			AccessTTL: 15 * time.Minute,
+			Secret:     "test-secret-key-for-jwt-signing",
+			AccessTTL:  15 * time.Minute,
 			RefreshTTL: 7 * 24 * time.Hour,
 		},
 	})

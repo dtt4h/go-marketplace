@@ -21,9 +21,9 @@ type NotificationService interface {
 }
 
 type notificationService struct {
-	email    EmailService
-	receipt  ReceiptService
-	log      *slog.Logger
+	email   EmailService
+	receipt ReceiptService
+	log     *slog.Logger
 }
 
 // NewNotificationService creates a new notification service.

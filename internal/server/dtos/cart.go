@@ -15,13 +15,13 @@ type CartStoreInfo struct {
 }
 
 type CartItemResponse struct {
-	ID              int64         `json:"id"`
-	ProductID       int64         `json:"product_id"`
-	Quantity        int32         `json:"quantity"`
-	Title           string        `json:"title,omitempty"`
-	Price           string        `json:"price,omitempty"`
-	Stock           int32         `json:"stock"`
-	PreviewImageURL string        `json:"preview_image_url,omitempty"`
+	ID              int64          `json:"id"`
+	ProductID       int64          `json:"product_id"`
+	Quantity        int32          `json:"quantity"`
+	Title           string         `json:"title,omitempty"`
+	Price           string         `json:"price,omitempty"`
+	Stock           int32          `json:"stock"`
+	PreviewImageURL string         `json:"preview_image_url,omitempty"`
 	Store           *CartStoreInfo `json:"store,omitempty"`
 }
 

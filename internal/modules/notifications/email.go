@@ -48,11 +48,11 @@ func (s *emailService) send(to string, subject string, body string) error {
 	auth := smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)
 
 	var headers = map[string]string{
-		"From":           from,
-		"To":             to,
-		"Subject":        subject,
-		"MIME-Version":   "1.0",
-		"Content-Type":   "text/html; charset=UTF-8",
+		"From":                      from,
+		"To":                        to,
+		"Subject":                   subject,
+		"MIME-Version":              "1.0",
+		"Content-Type":              "text/html; charset=UTF-8",
 		"Content-Transfer-Encoding": "7bit",
 	}
 
@@ -168,8 +168,8 @@ func (s *emailService) SendOrderConfirmation(to, customerName, orderID, total, i
 
 func (s *emailService) SendOrderStatusUpdate(to, customerName, orderID, status string) error {
 	statusText := map[string]string{
-		"paid":    "Оплачен",
-		"shipped": "Отправлен",
+		"paid":      "Оплачен",
+		"shipped":   "Отправлен",
 		"delivered": "Доставлен",
 		"cancelled": "Отменён",
 	}
@@ -234,11 +234,11 @@ func (s *emailService) SendNewApplicationNotification(to, username, storeName, d
 		<p><strong>Пользователь:</strong> ` + username + `</p>
 		<p><strong>Название магазина:</strong> ` + storeName + `</p>
 		` + func() string {
-			if description != "" {
-				return `<p><strong>Описание:</strong> ` + description + `</p>`
-			}
-			return ""
-		}() + `
+		if description != "" {
+			return `<p><strong>Описание:</strong> ` + description + `</p>`
+		}
+		return ""
+	}() + `
 		<p>Перейдите в панель администратора для рассмотрения.</p>
 	`
 	return s.send(to, subject, body)

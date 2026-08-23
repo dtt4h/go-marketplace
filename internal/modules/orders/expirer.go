@@ -14,11 +14,21 @@ type OrderExpirer struct {
 	queries *db.Queries
 	pool    *pgxpool.Pool
 	log     *slog.Logger
+	done    chan struct{}
 }
 
 // NewOrderExpirer creates a new OrderExpirer.
 func NewOrderExpirer(queries *db.Queries, pool *pgxpool.Pool, log *slog.Logger) *OrderExpirer {
-	return &OrderExpirer{queries: queries, pool: pool, log: log}
+	return &OrderExpirer{queries: queries, pool: pool, log: log, done: make(chan struct{})}
+}
+
+// Stop signals the expirer to stop.
+func (e *OrderExpirer) Stop() {
+	select {
+	case <-e.done:
+	default:
+		close(e.done)
+	}
 }
 
 // ExpirePendingOrders cancels all pending orders whose expires_at has passed,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/dtt4h/go-marketplace/internal/cache"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	mw "github.com/dtt4h/go-marketplace/internal/server/middleware"
 	"github.com/dtt4h/go-marketplace/pkg/httputil"
@@ -15,11 +16,12 @@ import (
 // ProductHandler handles HTTP requests for product operations.
 type ProductHandler struct {
 	service ProductService
+	cache   *cache.CatalogCache
 }
 
 // NewProductHandler creates a new ProductHandler.
-func NewProductHandler(service ProductService) *ProductHandler {
-	return &ProductHandler{service: service}
+func NewProductHandler(service ProductService, cache *cache.CatalogCache) *ProductHandler {
+	return &ProductHandler{service: service, cache: cache}
 }
 
 // ListCategories godoc
@@ -137,6 +139,15 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var req dtos.CreateProductRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
 		httputil.ValidationError(w, "invalid request body", nil)
+		return
+	}
+
+	// Validate input
+	errs := dtos.ValidateNonEmptyString(req.Title, "title")
+	errs.AddMap(dtos.ValidatePrice(req.Price, "price"))
+	errs.AddMap(dtos.ValidatePositiveInt(req.Stock, "stock"))
+	if !errs.IsEmpty() {
+		httputil.ValidationError(w, "validation failed", errs)
 		return
 	}
 

@@ -186,10 +186,10 @@ func (s *orderService) CreateOrder(ctx context.Context, userID *int64, req dtos.
 
 	// Build params
 	params := db.CreateOrderParams{
-		Total:         total,
-		Address:       req.Delivery.Address,
+		Total:          total,
+		Address:        req.Delivery.Address,
 		DeliveryMethod: pgtype.Text{String: req.Delivery.Method, Valid: req.Delivery.Method != ""},
-		DeliveryCost:  deliveryCost,
+		DeliveryCost:   deliveryCost,
 	}
 
 	if userID != nil {

@@ -11,11 +11,11 @@ import (
 )
 
 var (
-	ErrStoreNotFound      = errors.New("store not found")
-	ErrUserNotFound       = errors.New("user not found")
-	ErrUsernameTaken      = errors.New("username is already taken")
-	ErrStoreNameRequired  = errors.New("store name is required")
-	ErrUsernameRequired   = errors.New("username is required")
+	ErrStoreNotFound     = errors.New("store not found")
+	ErrUserNotFound      = errors.New("user not found")
+	ErrUsernameTaken     = errors.New("username is already taken")
+	ErrStoreNameRequired = errors.New("store name is required")
+	ErrUsernameRequired  = errors.New("username is required")
 )
 
 // UserService defines business logic for user profile operations.

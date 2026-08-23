@@ -96,3 +96,10 @@ func (b *Bot) Start(ctx context.Context) {
 	b.bot.Stop()
 	b.log.Info("telegram bot stopped")
 }
+
+// Stop gracefully stops the bot.
+func (b *Bot) Stop() {
+	if b.bot != nil {
+		b.bot.Stop()
+	}
+}

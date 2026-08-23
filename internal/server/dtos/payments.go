@@ -41,12 +41,12 @@ type PaymentListItem struct {
 
 func ToPaymentResponse(p db.Payment) PaymentResponse {
 	resp := PaymentResponse{
-		ID:       p.ID,
-		OrderID:  p.OrderID,
-		Amount:   NumericToStr(p.Amount),
-		Currency: p.Currency,
-		Status:   string(p.Status),
-		Provider: p.Provider,
+		ID:        p.ID,
+		OrderID:   p.OrderID,
+		Amount:    NumericToStr(p.Amount),
+		Currency:  p.Currency,
+		Status:    string(p.Status),
+		Provider:  p.Provider,
 		CreatedAt: p.CreatedAt.Time,
 		UpdatedAt: p.UpdatedAt.Time,
 	}

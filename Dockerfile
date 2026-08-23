@@ -17,7 +17,6 @@ RUN apk --no-cache add ca-certificates && \
 WORKDIR /app
 
 COPY --from=builder /app/server .
-COPY --from=builder /app/migrations ./migrations
 
 RUN chown -R appuser:appgroup /app
 

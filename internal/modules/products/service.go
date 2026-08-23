@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
+	"github.com/dtt4h/go-marketplace/internal/cache"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
 	"github.com/dtt4h/go-marketplace/pkg/pgutil"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -48,6 +49,7 @@ type ProductService interface {
 type productService struct {
 	repo      ProductRepository
 	storeRepo StoreResolver
+	cache     *cache.CatalogCache
 }
 
 // StoreResolver provides store lookup capabilities.
@@ -56,19 +58,37 @@ type StoreResolver interface {
 }
 
 // NewProductService creates a new ProductService.
-func NewProductService(repo ProductRepository, storeRepo StoreResolver) ProductService {
-	return &productService{repo: repo, storeRepo: storeRepo}
+func NewProductService(repo ProductRepository, storeRepo StoreResolver, cache *cache.CatalogCache) ProductService {
+	return &productService{repo: repo, storeRepo: storeRepo, cache: cache}
 }
 
 func (s *productService) ListCategories(ctx context.Context) ([]dtos.CategoryResponse, error) {
+	if s.cache != nil {
+		if items, ok := s.cache.GetCategories(ctx); ok {
+			return items, nil
+		}
+	}
+
 	rows, err := s.repo.ListCategories(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list categories: %w", err)
 	}
-	return dtos.BuildCategoryTree(rows), nil
+	items := dtos.BuildCategoryTree(rows)
+
+	if s.cache != nil {
+		s.cache.SetCategories(ctx, items)
+	}
+	return items, nil
 }
 
 func (s *productService) ListProducts(ctx context.Context, storeID, categoryID *int64, minPrice, maxPrice *string, search *string, sort string, page, limit int) ([]dtos.ProductListItem, int64, error) {
+	// Only cache unfiltered, sorted products (no store/category filters, default sort)
+	if s.cache != nil && storeID == nil && categoryID == nil && minPrice == nil && maxPrice == nil && search == nil && (sort == "" || sort == "created_desc") && page == 1 && limit == 20 {
+		if items, total, ok := s.cache.GetProducts(ctx); ok {
+			return items, total, nil
+		}
+	}
+
 	if sort == "" {
 		sort = "created_desc"
 	}
@@ -82,7 +102,11 @@ func (s *productService) ListProducts(ctx context.Context, storeID, categoryID *
 	}
 
 	if len(rows) == 0 {
-		return []dtos.ProductListItem{}, 0, nil
+		result := []dtos.ProductListItem{}
+		if s.cache != nil && storeID == nil && categoryID == nil && minPrice == nil && maxPrice == nil && search == nil && (sort == "" || sort == "created_desc") && page == 1 && limit == 20 {
+			s.cache.SetProducts(ctx, result, 0)
+		}
+		return result, 0, nil
 	}
 
 	productIDs := make([]int64, 0, len(rows))
@@ -103,6 +127,10 @@ func (s *productService) ListProducts(ctx context.Context, storeID, categoryID *
 	items := make([]dtos.ProductListItem, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, dtos.ToProductListItem(row, imagesByProduct[row.ID]))
+	}
+
+	if s.cache != nil && storeID == nil && categoryID == nil && minPrice == nil && maxPrice == nil && search == nil && (sort == "" || sort == "created_desc") && page == 1 && limit == 20 {
+		s.cache.SetProducts(ctx, items, total)
 	}
 
 	return items, total, nil
@@ -142,6 +170,12 @@ func (s *productService) ListProductsByStore(ctx context.Context, storeID int64,
 }
 
 func (s *productService) GetProduct(ctx context.Context, id int64) (dtos.ProductResponse, error) {
+	if s.cache != nil {
+		if resp, ok := s.cache.GetProductDetail(ctx, id); ok {
+			return resp, nil
+		}
+	}
+
 	row, err := s.repo.GetProduct(ctx, id)
 	if err != nil {
 		if pgutil.IsNoRows(err) {
@@ -155,7 +189,13 @@ func (s *productService) GetProduct(ctx context.Context, id int64) (dtos.Product
 		return dtos.ProductResponse{}, fmt.Errorf("list product images: %w", err)
 	}
 
-	return dtos.ToProductResponse(row, images), nil
+	resp := dtos.ToProductResponse(row, images)
+
+	if s.cache != nil {
+		s.cache.SetProductDetail(ctx, id, resp)
+	}
+
+	return resp, nil
 }
 
 func (s *productService) CreateProduct(ctx context.Context, userID int64, req dtos.CreateProductRequest) (dtos.ProductResponse, error) {
@@ -188,6 +228,10 @@ func (s *productService) CreateProduct(ctx context.Context, userID int64, req dt
 	product, err := s.repo.CreateProductWithImages(ctx, store.ID, req.CategoryID, &req.Title, req.Description, req.Price, int32(req.Stock), req.Images)
 	if err != nil {
 		return dtos.ProductResponse{}, fmt.Errorf("create product with images: %w", err)
+	}
+
+	if s.cache != nil {
+		s.cache.InvalidateProducts(ctx)
 	}
 
 	return s.GetProduct(ctx, product.ID)
@@ -226,12 +270,21 @@ func (s *productService) UpdateProduct(ctx context.Context, userID, id int64, re
 		return dtos.ProductResponse{}, fmt.Errorf("update product: %w", err)
 	}
 
+	if s.cache != nil {
+		s.cache.InvalidateProduct(ctx, id)
+		s.cache.InvalidateProducts(ctx)
+	}
+
 	return s.GetProduct(ctx, id)
 }
 
 func (s *productService) DeleteProduct(ctx context.Context, userID, id int64) error {
 	if err := s.checkOwnership(ctx, userID, id); err != nil {
 		return err
+	}
+	if s.cache != nil {
+		s.cache.InvalidateProduct(ctx, id)
+		s.cache.InvalidateProducts(ctx)
 	}
 	return s.repo.DeleteProduct(ctx, id)
 }
@@ -250,6 +303,11 @@ func (s *productService) ModerateProduct(ctx context.Context, id int64, req dtos
 
 	if err := s.repo.ModerateProductWithReason(ctx, id, req.Status, reason); err != nil {
 		return dtos.ProductResponse{}, fmt.Errorf("moderate product: %w", err)
+	}
+
+	if s.cache != nil {
+		s.cache.InvalidateProduct(ctx, id)
+		s.cache.InvalidateProducts(ctx)
 	}
 
 	return s.GetProduct(ctx, id)

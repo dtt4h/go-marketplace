@@ -243,17 +243,17 @@ type Payment struct {
 }
 
 type Product struct {
-	ID               int64              `json:"id"`
-	StoreID          int64              `json:"storeId"`
-	CategoryID       pgtype.Int8        `json:"categoryId"`
-	Title            string             `json:"title"`
-	Description      pgtype.Text        `json:"description"`
-	Price            pgtype.Numeric     `json:"price"`
-	Stock            int32              `json:"stock"`
-	Status           ProductStatus      `json:"status"`
-	RejectionReason  pgtype.Text        `json:"rejectionReason"`
-	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt        pgtype.Timestamptz `json:"updatedAt"`
+	ID              int64              `json:"id"`
+	StoreID         int64              `json:"storeId"`
+	CategoryID      pgtype.Int8        `json:"categoryId"`
+	Title           string             `json:"title"`
+	Description     pgtype.Text        `json:"description"`
+	Price           pgtype.Numeric     `json:"price"`
+	Stock           int32              `json:"stock"`
+	Status          ProductStatus      `json:"status"`
+	RejectionReason pgtype.Text        `json:"rejectionReason"`
+	CreatedAt       pgtype.Timestamptz `json:"createdAt"`
+	UpdatedAt       pgtype.Timestamptz `json:"updatedAt"`
 }
 
 type ProductImage struct {

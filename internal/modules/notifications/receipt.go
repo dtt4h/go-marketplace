@@ -65,11 +65,11 @@ func (s *receiptService) GenerateOrderReceiptHTML(orderID, customerName, custome
 				<p style="margin: 5px 0;"><strong>Имя:</strong> ` + customerName + `</p>
 				<p style="margin: 5px 0;"><strong>Email:</strong> ` + customerEmail + `</p>
 				` + func() string {
-					if customerPhone != "" {
-						return `<p style="margin: 5px 0;"><strong>Телефон:</strong> ` + customerPhone + `</p>`
-					}
-					return ""
-				}() + `
+		if customerPhone != "" {
+			return `<p style="margin: 5px 0;"><strong>Телефон:</strong> ` + customerPhone + `</p>`
+		}
+		return ""
+	}() + `
 				<p style="margin: 5px 0;"><strong>Адрес доставки:</strong> ` + address + `</p>
 			</div>
 			<div style="margin-bottom: 20px;">
