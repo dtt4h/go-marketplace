@@ -12,13 +12,13 @@ import (
 // --- Mocks ---
 
 type mockSellerApplicationRepository struct {
-	create          func(ctx context.Context, arg db.CreateSellerApplicationParams) (db.SellerApplication, error)
-	getByID         func(ctx context.Context, id int64) (db.SellerApplication, error)
+	create             func(ctx context.Context, arg db.CreateSellerApplicationParams) (db.SellerApplication, error)
+	getByID            func(ctx context.Context, id int64) (db.SellerApplication, error)
 	getPendingByUserID func(ctx context.Context, userID int64) (db.SellerApplication, error)
-	listByUser      func(ctx context.Context, userID int64) ([]db.SellerApplication, error)
-	listPending     func(ctx context.Context, limit, offset int32) ([]db.SellerApplication, error)
-	countPending    func(ctx context.Context) (int64, error)
-	updateStatus    func(ctx context.Context, id int64, status string) (db.SellerApplication, error)
+	listByUser         func(ctx context.Context, userID int64) ([]db.SellerApplication, error)
+	listPending        func(ctx context.Context, limit, offset int32) ([]db.SellerApplication, error)
+	countPending       func(ctx context.Context) (int64, error)
+	updateStatus       func(ctx context.Context, id int64, status string) (db.SellerApplication, error)
 }
 
 func (m *mockSellerApplicationRepository) Create(ctx context.Context, arg db.CreateSellerApplicationParams) (db.SellerApplication, error) {
@@ -44,9 +44,9 @@ func (m *mockSellerApplicationRepository) UpdateStatus(ctx context.Context, id i
 }
 
 type mockUserRepository struct {
-	updateUserRole    func(ctx context.Context, id int64, role db.UserRole) (db.User, error)
+	updateUserRole      func(ctx context.Context, id int64, role db.UserRole) (db.User, error)
 	createStoreWithRole func(ctx context.Context, userID int64, name string, description, logoURL *string) (db.Store, error)
-	getUserByID       func(ctx context.Context, id int64) (db.User, error)
+	getUserByID         func(ctx context.Context, id int64) (db.User, error)
 }
 
 func (m *mockUserRepository) UpdateUserRole(ctx context.Context, id int64, role db.UserRole) (db.User, error) {
@@ -60,9 +60,9 @@ func (m *mockUserRepository) GetUserByID(ctx context.Context, id int64) (db.User
 }
 
 type mockEmailSender struct {
-	sendApproved          func(to, username, storeName string) error
-	sendRejected          func(to, username, reason string) error
-	sendNewApplication    func(to, username, storeName, description string) error
+	sendApproved       func(to, username, storeName string) error
+	sendRejected       func(to, username, reason string) error
+	sendNewApplication func(to, username, storeName, description string) error
 }
 
 func (m *mockEmailSender) SendSellerApplicationApproved(to, username, storeName string) error {
@@ -90,10 +90,10 @@ func newTestService(repo SellerApplicationRepository, userRepo UserRepository, e
 
 func testApplication() db.SellerApplication {
 	return db.SellerApplication{
-		ID:        1,
-		UserID:    1,
-		StoreName: "Test Store",
-		Status:    "pending",
+		ID:          1,
+		UserID:      1,
+		StoreName:   "Test Store",
+		Status:      "pending",
 		Description: pgtype.Text{String: "Test description", Valid: true},
 	}
 }

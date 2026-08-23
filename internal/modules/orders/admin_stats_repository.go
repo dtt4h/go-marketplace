@@ -51,10 +51,10 @@ func (r *adminStatsRepository) CountTotalRevenue(ctx context.Context) (string, e
 	if err != nil {
 		return "0", fmt.Errorf("sum order totals: %w", err)
 	}
-	
+
 	if !total.Valid {
 		return "0", nil
 	}
-	
+
 	return dtos.NumericToStr(total), nil
 }

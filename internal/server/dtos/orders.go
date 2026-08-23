@@ -66,7 +66,7 @@ type OrderResponse struct {
 	CreatedAt      time.Time           `json:"created_at"`
 
 	// Guest fields
-	Customer      *CustomerInfo `json:"customer,omitempty"`
+	Customer       *CustomerInfo `json:"customer,omitempty"`
 	DeliveryMethod string        `json:"delivery_method,omitempty"`
 	DeliveryCost   string        `json:"delivery_cost,omitempty"`
 }
@@ -98,11 +98,11 @@ type OrderSellerListItem struct {
 
 func ToOrderResponse(order db.Order, items []db.GetOrderItemsRow) OrderResponse {
 	resp := OrderResponse{
-		ID:         order.ID,
-		Status:     string(order.Status),
-		Total:      NumericToStr(order.Total),
-		Address:    order.Address,
-		CreatedAt:  order.CreatedAt.Time,
+		ID:        order.ID,
+		Status:    string(order.Status),
+		Total:     NumericToStr(order.Total),
+		Address:   order.Address,
+		CreatedAt: order.CreatedAt.Time,
 	}
 
 	if order.PublicToken.Valid {

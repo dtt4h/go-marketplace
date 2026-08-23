@@ -85,7 +85,6 @@ func (r *authRepository) DeleteUserRefreshTokens(ctx context.Context, userID int
 	return r.queries.DeleteUserRefreshTokens(ctx, userID)
 }
 
-
 func (r *authRepository) GenerateResetToken(ctx context.Context, userID int64, expiresAt time.Time) (string, error) {
 	randomBytes := make([]byte, 32)
 	if _, err := rand.Read(randomBytes); err != nil {
@@ -96,8 +95,8 @@ func (r *authRepository) GenerateResetToken(ctx context.Context, userID int64, e
 	tokenHash := hashToken(token)
 
 	_, err := r.queries.GenerateResetToken(ctx, db.GenerateResetTokenParams{
-		ID:             userID,
-		ResetToken:     pgtype.Text{String: tokenHash, Valid: true},
+		ID:                  userID,
+		ResetToken:          pgtype.Text{String: tokenHash, Valid: true},
 		ResetTokenExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
 	})
 	if err != nil {

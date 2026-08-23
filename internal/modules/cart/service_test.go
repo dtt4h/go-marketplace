@@ -14,14 +14,14 @@ import (
 // --- Mock ---
 
 type mockCartRepository struct {
-	getCartItemsByUserID    func(ctx context.Context, userID int64) ([]db.GetCartItemsByUserIDRow, error)
+	getCartItemsByUserID            func(ctx context.Context, userID int64) ([]db.GetCartItemsByUserIDRow, error)
 	getCartItemByUserIDAndProductID func(ctx context.Context, userID, productID int64) (db.CartItem, error)
-	getCartByID             func(ctx context.Context, id, userID int64) (db.CartItem, error)
-	upsertCartItem          func(ctx context.Context, arg db.UpsertCartItemParams) (db.CartItem, error)
-	updateCartItemQuantity  func(ctx context.Context, arg db.UpdateCartItemQuantityParams) (db.CartItem, error)
-	deleteCartItem          func(ctx context.Context, arg db.DeleteCartItemParams) error
-	deleteCartItemsByUserID func(ctx context.Context, userID int64) error
-	getProduct              func(ctx context.Context, productID int64) (db.GetProductRow, error)
+	getCartByID                     func(ctx context.Context, id, userID int64) (db.CartItem, error)
+	upsertCartItem                  func(ctx context.Context, arg db.UpsertCartItemParams) (db.CartItem, error)
+	updateCartItemQuantity          func(ctx context.Context, arg db.UpdateCartItemQuantityParams) (db.CartItem, error)
+	deleteCartItem                  func(ctx context.Context, arg db.DeleteCartItemParams) error
+	deleteCartItemsByUserID         func(ctx context.Context, userID int64) error
+	getProduct                      func(ctx context.Context, productID int64) (db.GetProductRow, error)
 }
 
 func (m *mockCartRepository) GetCartItemsByUserID(ctx context.Context, userID int64) ([]db.GetCartItemsByUserIDRow, error) {
@@ -55,11 +55,11 @@ func newTestService(repo CartRepository) CartService {
 
 func testProduct() db.GetProductRow {
 	return db.GetProductRow{
-		ID:        1,
-		StoreID:   10,
-		Title:     "Test Product",
-		Stock:     100,
-		Status:    db.ProductStatusActive,
+		ID:      1,
+		StoreID: 10,
+		Title:   "Test Product",
+		Stock:   100,
+		Status:  db.ProductStatusActive,
 	}
 }
 

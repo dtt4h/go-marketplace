@@ -39,10 +39,51 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate items
+	if len(req.Items) == 0 {
+		httputil.ValidationError(w, "order must contain at least one item", nil)
+		return
+	}
+	for i, item := range req.Items {
+		if item.ProductID <= 0 {
+			httputil.ValidationError(w, "invalid item at index "+strconv.Itoa(i), nil)
+			return
+		}
+		if item.Quantity <= 0 {
+			httputil.ValidationError(w, "quantity must be positive for item at index "+strconv.Itoa(i), nil)
+			return
+		}
+	}
+
+	// Validate delivery
+	if dtos.ValidateNonEmptyString(req.Delivery.Address, "delivery.address").IsEmpty() == false {
+		// address is fine
+	} else {
+		// check if it's empty
+	}
+	if req.Delivery.Address == "" {
+		httputil.ValidationError(w, "delivery address is required", nil)
+		return
+	}
+
 	// If authenticated — use userID from JWT; otherwise guest checkout
 	var userID *int64
 	if uid, ok := mw.UserIDFromCtx(r.Context()); ok {
 		userID = &uid
+	} else {
+		// Guest: validate customer info
+		if req.Customer == nil {
+			httputil.ValidationError(w, "customer info is required for guest checkout", nil)
+			return
+		}
+		if errs := dtos.ValidateNonEmptyString(req.Customer.FirstName, "customer.first_name"); !errs.IsEmpty() {
+			httputil.ValidationError(w, "validation failed", errs)
+			return
+		}
+		if errs := dtos.ValidateNonEmptyString(req.Customer.Email, "customer.email"); !errs.IsEmpty() {
+			httputil.ValidationError(w, "validation failed", errs)
+			return
+		}
 	}
 
 	resp, err := h.service.CreateOrder(r.Context(), userID, req)

@@ -539,9 +539,9 @@ WHERE id = $1
 `
 
 type ModerateProductParams struct {
-	ID            int64         `json:"id"`
-	Status        ProductStatus `json:"status"`
-	RejectionReason pgtype.Text  `json:"rejectionReason"`
+	ID              int64         `json:"id"`
+	Status          ProductStatus `json:"status"`
+	RejectionReason pgtype.Text   `json:"rejectionReason"`
 }
 
 func (q *Queries) ModerateProduct(ctx context.Context, arg ModerateProductParams) (pgconn.CommandTag, error) {

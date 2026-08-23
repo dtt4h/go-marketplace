@@ -250,4 +250,3 @@ func (s *authService) generateTokens(userID int64, role string) (accessToken, re
 
 	return accessToken, refreshToken, nil
 }
-

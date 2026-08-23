@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	ErrAlreadyPending    = errors.New("you already have a pending application")
-	ErrNotFound          = errors.New("application not found")
-	ErrInvalidStatus     = errors.New("invalid status, must be 'approved' or 'rejected'")
-	ErrAlreadyProcessed  = errors.New("application has already been processed")
+	ErrAlreadyPending   = errors.New("you already have a pending application")
+	ErrNotFound         = errors.New("application not found")
+	ErrInvalidStatus    = errors.New("invalid status, must be 'approved' or 'rejected'")
+	ErrAlreadyProcessed = errors.New("application has already been processed")
 )
 
 // UserRepository — subset of users.UserRepository needed here.
@@ -49,9 +49,9 @@ type SellerApplicationService interface {
 }
 
 type sellerApplicationService struct {
-	repo       SellerApplicationRepository
-	userRepo   UserRepository
-	email      EmailSender
+	repo     SellerApplicationRepository
+	userRepo UserRepository
+	email    EmailSender
 }
 
 func NewSellerApplicationService(repo SellerApplicationRepository, userRepo UserRepository, email EmailSender) SellerApplicationService {

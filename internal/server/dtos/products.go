@@ -212,16 +212,16 @@ func ToProductResponse(row db.GetProductRow, images []db.ProductImage) ProductRe
 }
 
 type productListFields struct {
-	ID            int64
-	Title         string
-	Price         pgtype.Numeric
-	Stock         int32
-	CreatedAt     pgtype.Timestamptz
-	StoreID       int64
-	StoreName     pgtype.Text
-	CategoryID    pgtype.Int8
-	CategoryName  pgtype.Text
-	CategorySlug  pgtype.Text
+	ID           int64
+	Title        string
+	Price        pgtype.Numeric
+	Stock        int32
+	CreatedAt    pgtype.Timestamptz
+	StoreID      int64
+	StoreName    pgtype.Text
+	CategoryID   pgtype.Int8
+	CategoryName pgtype.Text
+	CategorySlug pgtype.Text
 }
 
 func toProductListItem(f productListFields, images []db.ProductImage) ProductListItem {

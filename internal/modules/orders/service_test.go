@@ -18,22 +18,22 @@ import (
 // --- Mocks ---
 
 type mockOrderRepository struct {
-	createOrder           func(ctx context.Context, arg db.CreateOrderParams) (db.Order, error)
-	createOrderItem       func(ctx context.Context, arg db.CreateOrderItemParams) (db.OrderItem, error)
-	getOrder              func(ctx context.Context, id int64) (db.Order, error)
-	getOrderByPublicToken func(ctx context.Context, token string) (db.Order, error)
-	getOrderItems         func(ctx context.Context, orderID int64) ([]db.GetOrderItemsRow, error)
-	listOrderByUser       func(ctx context.Context, userID int64, page, limit int) ([]db.Order, int64, error)
-	listOrdersBySeller    func(ctx context.Context, userID int64, page, limit int) ([]db.Order, int64, error)
-	updateOrderStatus     func(ctx context.Context, arg db.UpdateOrderStatusParams) (db.Order, error)
-	updateOrderTracking   func(ctx context.Context, orderID int64, trackingNumber string) (db.Order, error)
-	decrementProductStock func(ctx context.Context, arg db.DecrementProductStockParams) (db.DecrementProductStockRow, error)
-	incrementProductStock func(ctx context.Context, arg db.IncrementProductStockParams) (db.IncrementProductStockRow, error)
-	getProductStoreID     func(ctx context.Context, productID int64) (int64, error)
-	getProduct            func(ctx context.Context, productID int64) (db.GetProductRow, error)
-	countOrderItems       func(ctx context.Context, orderID int64) (int64, error)
+	createOrder            func(ctx context.Context, arg db.CreateOrderParams) (db.Order, error)
+	createOrderItem        func(ctx context.Context, arg db.CreateOrderItemParams) (db.OrderItem, error)
+	getOrder               func(ctx context.Context, id int64) (db.Order, error)
+	getOrderByPublicToken  func(ctx context.Context, token string) (db.Order, error)
+	getOrderItems          func(ctx context.Context, orderID int64) ([]db.GetOrderItemsRow, error)
+	listOrderByUser        func(ctx context.Context, userID int64, page, limit int) ([]db.Order, int64, error)
+	listOrdersBySeller     func(ctx context.Context, userID int64, page, limit int) ([]db.Order, int64, error)
+	updateOrderStatus      func(ctx context.Context, arg db.UpdateOrderStatusParams) (db.Order, error)
+	updateOrderTracking    func(ctx context.Context, orderID int64, trackingNumber string) (db.Order, error)
+	decrementProductStock  func(ctx context.Context, arg db.DecrementProductStockParams) (db.DecrementProductStockRow, error)
+	incrementProductStock  func(ctx context.Context, arg db.IncrementProductStockParams) (db.IncrementProductStockRow, error)
+	getProductStoreID      func(ctx context.Context, productID int64) (int64, error)
+	getProduct             func(ctx context.Context, productID int64) (db.GetProductRow, error)
+	countOrderItems        func(ctx context.Context, orderID int64) (int64, error)
 	getOrderItemsByOrderID func(ctx context.Context, orderID int64) ([]db.GetOrderItemsByOrderIDRow, error)
-	getPaymentByOrderID   func(ctx context.Context, orderID int64) (db.Payment, error)
+	getPaymentByOrderID    func(ctx context.Context, orderID int64) (db.Payment, error)
 }
 
 func (m *mockOrderRepository) CreateOrder(ctx context.Context, arg db.CreateOrderParams) (db.Order, error) {

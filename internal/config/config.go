@@ -65,9 +65,10 @@ type PaymentsConfig struct {
 }
 
 type RedisConfig struct {
-	Host string
-	Port int
-	DB   int
+	Host     string
+	Port     int
+	DB       int
+	Password string
 }
 
 type S3Config struct {
@@ -79,13 +80,13 @@ type S3Config struct {
 }
 
 type SMTPConfig struct {
-	Host         string
-	Port         int
-	Username     string
-	Password     string
-	FromEmail    string
-	FromName     string
-	Encryption   string // "tls", "starttls", or "none"
+	Host       string
+	Port       int
+	Username   string
+	Password   string
+	FromEmail  string
+	FromName   string
+	Encryption string // "tls", "starttls", or "none"
 }
 
 func (r RedisConfig) Addr() string {
@@ -124,9 +125,10 @@ func Load() (*Config, error) {
 			WebhookSecret: getEnv("PAYMENTS_WEBHOOK_SECRET", ""),
 		},
 		Redis: RedisConfig{
-			Host: getEnv("REDIS_HOST", "localhost"),
-			Port: getEnvInt("REDIS_PORT", 6379),
-			DB:   getEnvInt("REDIS_DB", 0),
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnvInt("REDIS_PORT", 6379),
+			DB:       getEnvInt("REDIS_DB", 0),
+			Password: getEnv("REDIS_PASSWORD", ""),
 		},
 		S3: S3Config{
 			Endpoint:  getEnv("S3_ENDPOINT", ""),
@@ -151,6 +153,18 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c *Config) Validate() error {
+	if c.Env == "production" {
+		if c.JWT.Secret == "" || c.JWT.Secret == "dev-secret-change-me" {
+			return fmt.Errorf("JWT_SECRET must be set to a non-default value in production")
+		}
+		if c.Database.Password == "postgres" {
+			return fmt.Errorf("DB_PASSWORD must be changed from default in production")
+		}
+	}
+	return nil
 }
 
 func getEnv(key, fallback string) string {

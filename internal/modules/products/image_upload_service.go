@@ -2,7 +2,6 @@ package products
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -11,8 +10,6 @@ import (
 	"github.com/dtt4h/go-marketplace/internal/storage"
 	"github.com/dtt4h/go-marketplace/pkg/pgutil"
 )
-
-var ErrStorageNotConfigured = errors.New("image storage is not configured")
 
 // ImageUploadService handles image upload and deletion operations.
 type ImageUploadService interface {
@@ -48,7 +45,7 @@ func (s *imageUploadService) checkProductOwnership(ctx context.Context, productI
 
 func (s *imageUploadService) UploadImage(ctx context.Context, productID int64, userID int64, reader io.Reader, size int64, contentType string) (dtos.ProductImageResponse, error) {
 	if s.store == nil {
-		return dtos.ProductImageResponse{}, ErrStorageNotConfigured
+		return dtos.ProductImageResponse{}, storage.ErrStorageNotConfigured
 	}
 
 	if err := s.checkProductOwnership(ctx, productID, userID); err != nil {
@@ -83,7 +80,7 @@ func (s *imageUploadService) UploadImage(ctx context.Context, productID int64, u
 
 func (s *imageUploadService) DeleteImage(ctx context.Context, imageID int64, userID int64) error {
 	if s.store == nil {
-		return ErrStorageNotConfigured
+		return storage.ErrStorageNotConfigured
 	}
 
 	img, err := s.repo.GetImageByID(ctx, imageID)
@@ -112,7 +109,7 @@ func (s *imageUploadService) DeleteImage(ctx context.Context, imageID int64, use
 
 func (s *imageUploadService) GetPresignedUploadURL(ctx context.Context, productID int64, userID int64, contentType string, objectKey string) (string, error) {
 	if s.store == nil {
-		return "", ErrStorageNotConfigured
+		return "", storage.ErrStorageNotConfigured
 	}
 
 	if err := s.checkProductOwnership(ctx, productID, userID); err != nil {
@@ -129,7 +126,7 @@ func (s *imageUploadService) GetPresignedUploadURL(ctx context.Context, productI
 
 func (s *imageUploadService) GetPresignedDownloadURL(ctx context.Context, imageID int64, userID int64, expirySeconds int64) (string, error) {
 	if s.store == nil {
-		return "", ErrStorageNotConfigured
+		return "", storage.ErrStorageNotConfigured
 	}
 
 	img, err := s.repo.GetImageByID(ctx, imageID)

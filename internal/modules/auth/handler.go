@@ -39,6 +39,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate input
+	errs := dtos.ValidateEmail(req.Email)
+	errs.AddMap(dtos.ValidatePassword(req.Password))
+	errs.AddMap(dtos.ValidateUsername(req.Username))
+	if !errs.IsEmpty() {
+		httputil.ValidationError(w, "validation failed", errs)
+		return
+	}
+
 	resp, err := h.service.Register(r.Context(), req)
 	if err != nil {
 		switch {

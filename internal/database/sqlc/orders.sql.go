@@ -89,16 +89,16 @@ RETURNING *
 `
 
 type CreateOrderParams struct {
-	UserID          pgtype.Int8      `json:"userId"`
-	Total           pgtype.Numeric   `json:"total"`
-	Address         string           `json:"address"`
-	PublicToken     pgtype.Text      `json:"publicToken"`
-	CustomerFirstName pgtype.Text     `json:"customerFirstName"`
-	CustomerLastName  pgtype.Text     `json:"customerLastName"`
-	CustomerEmail     pgtype.Text     `json:"customerEmail"`
-	CustomerPhone     pgtype.Text     `json:"customerPhone"`
-	DeliveryMethod  pgtype.Text      `json:"deliveryMethod"`
-	DeliveryCost    pgtype.Numeric   `json:"deliveryCost"`
+	UserID            pgtype.Int8    `json:"userId"`
+	Total             pgtype.Numeric `json:"total"`
+	Address           string         `json:"address"`
+	PublicToken       pgtype.Text    `json:"publicToken"`
+	CustomerFirstName pgtype.Text    `json:"customerFirstName"`
+	CustomerLastName  pgtype.Text    `json:"customerLastName"`
+	CustomerEmail     pgtype.Text    `json:"customerEmail"`
+	CustomerPhone     pgtype.Text    `json:"customerPhone"`
+	DeliveryMethod    pgtype.Text    `json:"deliveryMethod"`
+	DeliveryCost      pgtype.Numeric `json:"deliveryCost"`
 }
 
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {

@@ -19,7 +19,7 @@ type AdminOrderService interface {
 }
 
 type adminOrderService struct {
-	repo AdminOrderRepository
+	repo   AdminOrderRepository
 	solver storeResolver
 }
 

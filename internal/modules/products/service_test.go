@@ -14,22 +14,22 @@ import (
 // --- Mocks ---
 
 type mockProductRepository struct {
-	listCategories            func(ctx context.Context) ([]db.ListCategoriesRow, error)
-	listProducts              func(ctx context.Context, storeID, categoryID *int64, minPrice, maxPrice *string, search *string, sort string, page, limit int) ([]db.ListProductsRow, int64, error)
-	listProductsByStoreID     func(ctx context.Context, storeID int64, page, limit int) ([]db.ListProductsByStoreIDRow, int64, error)
-	getProduct                func(ctx context.Context, id int64) (db.GetProductRow, error)
-	createProductWithImages   func(ctx context.Context, storeID int64, categoryID *int64, title, description *string, price string, stock int32, images []string) (db.Product, error)
-	updateProduct             func(ctx context.Context, id int64, title, description *string, price *string, stock *int32) (db.Product, error)
-	deleteProduct             func(ctx context.Context, id int64) error
-	moderateProduct           func(ctx context.Context, id int64, status db.ProductStatus) error
-	moderateProductWithReason func(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error
-	listProductImages         func(ctx context.Context, productID int64) ([]db.ProductImage, error)
+	listCategories                func(ctx context.Context) ([]db.ListCategoriesRow, error)
+	listProducts                  func(ctx context.Context, storeID, categoryID *int64, minPrice, maxPrice *string, search *string, sort string, page, limit int) ([]db.ListProductsRow, int64, error)
+	listProductsByStoreID         func(ctx context.Context, storeID int64, page, limit int) ([]db.ListProductsByStoreIDRow, int64, error)
+	getProduct                    func(ctx context.Context, id int64) (db.GetProductRow, error)
+	createProductWithImages       func(ctx context.Context, storeID int64, categoryID *int64, title, description *string, price string, stock int32, images []string) (db.Product, error)
+	updateProduct                 func(ctx context.Context, id int64, title, description *string, price *string, stock *int32) (db.Product, error)
+	deleteProduct                 func(ctx context.Context, id int64) error
+	moderateProduct               func(ctx context.Context, id int64, status db.ProductStatus) error
+	moderateProductWithReason     func(ctx context.Context, id int64, status db.ProductStatus, reason pgtype.Text) error
+	listProductImages             func(ctx context.Context, productID int64) ([]db.ProductImage, error)
 	listProductImagesByProductIDs func(ctx context.Context, productIDs []int64) ([]db.ProductImage, error)
-	getProductStoreOwner      func(ctx context.Context, productID int64) (db.GetProductStoreOwnerRow, error)
-	getImageByID              func(ctx context.Context, id int64) (db.ProductImage, error)
-	deleteImageByID           func(ctx context.Context, id int64) error
-	createProductImage        func(ctx context.Context, productID int64, url string, position int32) (db.ProductImage, error)
-	listProductsByStatus      func(ctx context.Context, status db.ProductStatus, page, limit int) ([]db.ListProductsByStatusRow, int64, error)
+	getProductStoreOwner          func(ctx context.Context, productID int64) (db.GetProductStoreOwnerRow, error)
+	getImageByID                  func(ctx context.Context, id int64) (db.ProductImage, error)
+	deleteImageByID               func(ctx context.Context, id int64) error
+	createProductImage            func(ctx context.Context, productID int64, url string, position int32) (db.ProductImage, error)
+	listProductsByStatus          func(ctx context.Context, status db.ProductStatus, page, limit int) ([]db.ListProductsByStatusRow, int64, error)
 }
 
 func (m *mockProductRepository) ListCategories(ctx context.Context) ([]db.ListCategoriesRow, error) {
@@ -90,17 +90,17 @@ func (m *mockStoreResolver) GetStoreByUserID(ctx context.Context, userID int64) 
 }
 
 func newTestService(repo ProductRepository, storeRepo StoreResolver) ProductService {
-	return &productService{repo: repo, storeRepo: storeRepo}
+	return &productService{repo: repo, storeRepo: storeRepo, cache: nil}
 }
 
 func testProductRow() db.GetProductRow {
 	return db.GetProductRow{
-		ID:        1,
-		StoreID:   10,
-		Title:     "Test Product",
-		Stock:     100,
-		Status:    db.ProductStatusActive,
-		StoreName: pgtype.Text{String: "Test Store", Valid: true},
+		ID:           1,
+		StoreID:      10,
+		Title:        "Test Product",
+		Stock:        100,
+		Status:       db.ProductStatusActive,
+		StoreName:    pgtype.Text{String: "Test Store", Valid: true},
 		CategoryName: pgtype.Text{String: "Electronics", Valid: true},
 		CategoryID:   pgtype.Int8{Int64: 1, Valid: true},
 		CategorySlug: pgtype.Text{String: "electronics", Valid: true},
