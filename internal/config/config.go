@@ -160,8 +160,17 @@ func (c *Config) Validate() error {
 		if c.JWT.Secret == "" || c.JWT.Secret == "dev-secret-change-me" {
 			return fmt.Errorf("JWT_SECRET must be set to a non-default value in production")
 		}
+		if len(c.JWT.Secret) < 32 {
+			return fmt.Errorf("JWT_SECRET must be at least 32 characters in production")
+		}
 		if c.Database.Password == "postgres" {
 			return fmt.Errorf("DB_PASSWORD must be changed from default in production")
+		}
+		if c.Redis.Password == "" {
+			return fmt.Errorf("REDIS_PASSWORD must be set in production")
+		}
+		if c.Payments.WebhookSecret == "" {
+			return fmt.Errorf("PAYMENTS_WEBHOOK_SECRET must be set in production")
 		}
 	}
 	return nil
