@@ -335,10 +335,15 @@ make migrate-down
 Go:
 
 ```bash
-make test          # go test ./...
+make test          # go test ./... (unit-тесты, 7 модулей)
+go test -tags=integration -timeout 180s ./internal/integration/...  # integration (Docker required)
 ```
 
-Покрыты Service-слои: `auth`, `cart`, `orders`, `payments`, `products`, `sellerapplications`, `users` (mock из `pgxmock`). Handler/Repository и документация-тестов — нет.
+Покрыты:
+- **Service-слои**: `auth`, `cart`, `orders`, `payments`, `products`, `sellerapplications`, `users` (mock из `pgxmock`)
+- **Handler-слои**: `auth` (68 тестов), `products` (38 тестов) — chi router + mock middleware
+- **Integration**: `auth`, `products`, `cart` — testcontainers-go + реальная PostgreSQL 16
+
 JS: тестов нет (в планах).
 
 ## Статус
@@ -349,12 +354,112 @@ JS: тестов нет (в планах).
 | Миграции | ✅ 5 миграций покрывают схему |
 | Swagger | ✅ Генерируется через swaggo |
 | Telegram-бот | ✅ `/stats`, `/moderate`, `/applications`, `/orders` |
-| Frontend (web/) | 🟡 В работе — каталог/карточка/корзина/профициль есть, но хуки используют **моки** вместо HTTP API; кабинет продавца и админка на моках |
+| Frontend (web/) | 🟡 В работе — каталог/карточка/корзина/профиль есть, но хуки используют **моки** вместо HTTP API; кабинет продавца и админка на моках |
 | Платежи | 🟡 Mock-провайдер + webhook; реальный шлюз требует `PAYMENT_GATEWAY_URL/KEY` |
-| Redis | 🔴 Reserved в `.env`, не подключён (предпол. для rate limit / кэш катаaлога) |
-| Rate limiting | 🟡 In-memory по IP (не масштабируется между инстансами) |
-| CI/CD | 🔴 Отсутствует (go test/build можно добавить в GitHub Actions) |
-| Веб-сборка веб-фронта | 🔴 Нет Docker-стадии для `web/` |
+| Redis | ✅ Кэш каталога + rate limiting (Redis с in-memory fallback) |
+| Rate limiting | ✅ Redis-backed, in-memory fallback для dev |
+| CI/CD | ✅ GitHub Actions: build, test, integration tests, Trivy, frontend build, Docker push |
+| Веб-сборка веб-фронта | ✅ Dockerfile.web (multi-stage, nginx) |
+| Security headers | ✅ Backend middleware + nginx |
+| Prometheus metrics | ✅ `/metrics` (counter, histogram, gauge) |
+| Health checks | ✅ `/health/live` (liveness), `/health/ready` (readiness: DB + Redis ping) |
+| S3 storage | ✅ Graceful degradation (fallback если S3 не настроен) |
+| Integration tests | ✅ testcontainers-go + PostgreSQL (build tag `integration`) |
+| Production config | ✅ `nginx.prod.conf` (TLS, HSTS), config validation, `stop_grace_period` |
+| Backup automation | ✅ `db-backup-cron` сервис (cron, retention) |
+
+---
+
+## Деплой в продакшен
+
+### 1. Подготовка
+
+```bash
+# Клонировать репозиторий на сервер
+git clone <repo-url> && cd go-marketplace
+
+# Создать .env из примера и заполнить продакшен-значениями
+cp .env.example .env
+```
+
+**Обязательные переменные для production:**
+
+| Переменная | Требование |
+|------------|------------|
+| `APP_ENV` | `production` |
+| `JWT_SECRET` | Минимум 32 символа, случайный |
+| `DB_PASSWORD` | Не `postgres` |
+| `REDIS_PASSWORD` | Обязательно |
+| `PAYMENTS_WEBHOOK_SECRET` | Обязательно |
+| `S3_*` | Реальный S3 (AWS, Yandex Object Storage) |
+| `SMTP_*` | Для email-уведомлений |
+| `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ADMIN_IDS` | Для админ-бота |
+
+### 2. TLS сертификаты
+
+```bash
+# Получить сертификаты через certbot
+mkdir -p nginx-ssl
+certbot certonly --standalone -d yourdomain.com
+cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem nginx-ssl/
+cp /etc/letsencrypt/live/yourdomain.com/privkey.pem nginx-ssl/
+```
+
+### 3. Запуск с production-профилем
+
+```bash
+# Запуск с автоматическими бэкапами (cron, ежедневно в 03:00)
+docker compose --profile production up -d --build
+```
+
+Это поднимет:
+- `db`, `redis`, `minio` — инфраструктура
+- `app` — бэкенд (миграции применяются автоматически)
+- `web` — nginx + frontend
+- `db-backup-cron` — ежедневный бэкап с retention (по умолчанию 7 дней)
+
+### 4. Nginx с TLS
+
+Для продакшена смонтируйте `nginx.prod.conf` и сертификаты:
+
+```yaml
+# docker-compose.override.yml (не коммитить)
+services:
+  web:
+    volumes:
+      - ./web/nginx.prod.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx-ssl:/etc/nginx/ssl:ro
+```
+
+### 5. Мониторинг
+
+```bash
+# Prometheus и Grafana (отдельно)
+# Импортировать дашборд: docs/grafana/dashboard.json
+```
+
+Метрики доступны на `/metrics` (без авторизации, но в prod nginx ограничивает доступ по IP).
+
+### 6. Бэкапы
+
+```bash
+# Ручной бэкап
+docker compose run --rm db-backup
+
+# Восстановление
+./scripts/backup.sh --restore backups/marketplace_20260101_030000.dump
+
+# Автоматические бэкапы — через db-backup-cron (profile: production)
+# Retention: BACKUP_RETENTION_DAYS (по умолчанию 7)
+```
+
+### 7. Обновление
+
+```bash
+git pull
+docker compose --profile production up -d --build
+# Миграции применятся автоматически при старте app
+```
 
 ## Документация
 
