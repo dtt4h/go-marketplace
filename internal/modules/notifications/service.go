@@ -1,8 +1,8 @@
 package notifications
 
 import (
+	"fmt"
 	"log/slog"
-	"time"
 
 	db "github.com/dtt4h/go-marketplace/internal/database/sqlc"
 	"github.com/dtt4h/go-marketplace/internal/server/dtos"
@@ -80,6 +80,5 @@ func BuildOrderItems(items []db.GetOrderItemsRow) []OrderItem {
 }
 
 func formatOrderID(id int64) string {
-	now := time.Now()
-	return now.Format("20060102") + "-" + string(rune('0'+id%10)) + string(rune('A'+id%26))
+	return fmt.Sprintf("%d", id)
 }

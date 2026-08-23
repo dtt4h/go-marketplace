@@ -200,6 +200,21 @@ func (s *paymentService) HandleWebhook(ctx context.Context, req dtos.WebhookRequ
 		return fmt.Errorf("get payment by order: %w", err)
 	}
 
+	// Idempotency: skip if payment is already in the target status
+	if payment.Status == status {
+		s.log.Info("webhook: payment already in target status, skipping",
+			slog.Int64("order_id", req.OrderID),
+			slog.String("status", string(status)))
+		return nil
+	}
+
+	// Refunded webhook for already-refunded payment — skip
+	if payment.Status == db.PaymentStatusRefunded {
+		s.log.Info("webhook: payment already refunded, skipping",
+			slog.Int64("order_id", req.OrderID))
+		return nil
+	}
+
 	_, err = s.repo.UpdatePaymentStatus(ctx, db.UpdatePaymentStatusParams{
 		ID:                payment.ID,
 		Status:            status,
